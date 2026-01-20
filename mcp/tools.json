@@ -1,0 +1,160 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "create_risk",
+      "description": "Create a risk entry in MCP",
+      "request": { "method": "POST", "path": "/api/risk" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": { "type": "string" },
+          "city": { "type": "string" },
+          "latitude": { "type": "number" },
+          "longitude": { "type": "number" },
+          "risk_level": { "type": "number" }
+        },
+        "required": [
+          "country",
+          "city",
+          "latitude",
+          "longitude",
+          "risk_level"
+        ]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "list_risk",
+      "description": "List risk entries from MCP",
+      "request": { "method": "GET", "path": "/api/risk" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": { "type": "string" },
+          "city": { "type": "string" }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "update_risk",
+      "description": "Update a risk entry in MCP by id",
+      "request": { "method": "PUT", "path": "/api/risk/{risk_id}" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "risk_id": { "type": "integer" },
+          "country": { "type": "string" },
+          "city": { "type": "string" },
+          "latitude": { "type": "number" },
+          "longitude": { "type": "number" },
+          "risk_level": { "type": "number" }
+        },
+        "required": ["risk_id"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "web_search",
+      "description": "Search the internet for real-time information.",
+      "request": { "method": "GET", "path": "/api/search" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "The search query" }
+        },
+        "required": ["query"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "score_military",
+      "description": "Compute military threat score (0-1) from a fixed source.",
+      "request": { "method": "GET", "path": "/api/score/military" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": { "type": "string" }
+        },
+        "required": ["country"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "score_economy",
+      "description": "Compute economy stability score (0-1) from a fixed source.",
+      "request": { "method": "GET", "path": "/api/score/economy" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": { "type": "string" }
+        },
+        "required": ["country"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "score_safety",
+      "description": "Compute safety score (0-1) from a fixed source.",
+      "request": { "method": "GET", "path": "/api/score/safety" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": { "type": "string" }
+        },
+        "required": ["country"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "score_hazard",
+      "description": "Compute hazard score (0-1) from a fixed source.",
+      "request": { "method": "GET", "path": "/api/score/hazard" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": { "type": "string" }
+        },
+        "required": ["country"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "score_overall",
+      "description": "Compute overall risk score using the fixed-source factor scores.",
+      "request": { "method": "GET", "path": "/api/score/overall" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": { "type": "string" }
+        },
+        "required": ["country"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "list_tools",
+      "description": "List available MCP tools",
+      "request": { "method": "GET", "path": "/api/tools" }
+    }
+  }
+]
