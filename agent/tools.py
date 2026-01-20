@@ -1,5 +1,7 @@
 import re
+import time
 from typing import Any, Callable
+from urllib.parse import urlencode
 
 import httpx
 from langchain.tools import StructuredTool
@@ -29,6 +31,17 @@ def _build_args_model(name: str, parameters: dict) -> type:
     return create_model(f"{name.title()}Args", **fields)
 
 
+_CACHE_TTL_SECONDS = 5
+_GET_CACHE: dict[str, tuple[float, Any]] = {}
+
+
+def _cache_key(url: str, params: dict[str, Any]) -> str:
+    if not params:
+        return url
+    items = sorted(params.items(), key=lambda item: item[0])
+    return f"{url}?{urlencode(items)}"
+
+
 def _make_tool_fn(mcp_url: str, method: str, path: str) -> Callable[..., Any]:
     def _fn(**kwargs: Any) -> Any:
         url = f"{mcp_url}{path}"
@@ -39,14 +52,22 @@ def _make_tool_fn(mcp_url: str, method: str, path: str) -> Callable[..., Any]:
             url = url.replace(f"{{{key}}}", str(kwargs.get(key)))
             kwargs = {k: v for k, v in kwargs.items() if k != key}
         if method in {"GET", "DELETE"}:
+            if method == "GET":
+                key = _cache_key(url, kwargs)
+                cached = _GET_CACHE.get(key)
+                if cached and time.time() - cached[0] < _CACHE_TTL_SECONDS:
+                    return cached[1]
             response = httpx.request(method, url, params=kwargs, timeout=30)
         else:
             response = httpx.request(method, url, json=kwargs, timeout=30)
         response.raise_for_status()
         try:
-            return response.json()
+            payload = response.json()
         except ValueError:
-            return response.text
+            payload = response.text
+        if method == "GET":
+            _GET_CACHE[_cache_key(url, kwargs)] = (time.time(), payload)
+        return payload
 
     return _fn
 

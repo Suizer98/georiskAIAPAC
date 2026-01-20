@@ -1,0 +1,31 @@
+import { create } from 'zustand'
+
+export type MapLayer = {
+  id: 'risk'
+  label: string
+  enabled: boolean
+}
+
+type LayerState = {
+  layers: MapLayer[]
+  toggleLayer: (id: MapLayer['id']) => void
+  setLayer: (id: MapLayer['id'], enabled: boolean) => void
+}
+
+export const useLayerStore = create<LayerState>((set) => ({
+  layers: [{ id: 'risk', label: 'Risk Heatmap', enabled: true }],
+  toggleLayer: (id) =>
+    set((state) => ({
+      layers: state.layers.map((layer) =>
+        layer.id === id
+          ? { ...layer, enabled: !layer.enabled }
+          : layer
+      ),
+    })),
+  setLayer: (id, enabled) =>
+    set((state) => ({
+      layers: state.layers.map((layer) =>
+        layer.id === id ? { ...layer, enabled } : layer
+      ),
+    })),
+}))

@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import asyncio
 from urllib.parse import urljoin
 from datetime import datetime
 from pathlib import Path
@@ -8,6 +9,7 @@ from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from ddgs import DDGS
 
@@ -37,6 +39,16 @@ def load_tools() -> list[dict]:
 
 
 TOOLS = load_tools()
+_risk_subscribers: list[asyncio.Queue[str]] = []
+
+
+async def _broadcast_risk_event(event: dict) -> None:
+    payload = f"data: {json.dumps(event)}\n\n"
+    for queue in list(_risk_subscribers):
+        try:
+            queue.put_nowait(payload)
+        except asyncio.QueueFull:
+            continue
 
 
 @router.get("/health")
@@ -64,19 +76,59 @@ def get_risk_data(
     return data
 
 
-@router.post("/api/risk", response_model=RiskDataOut, status_code=201)
-def create_risk_data(
+@router.get("/api/risk/events")
+async def risk_events():
+    queue: asyncio.Queue[str] = asyncio.Queue(maxsize=10)
+    _risk_subscribers.append(queue)
+
+    async def event_generator():
+        try:
+            while True:
+                message = await queue.get()
+                yield message
+        except asyncio.CancelledError:
+            raise
+        finally:
+            if queue in _risk_subscribers:
+                _risk_subscribers.remove(queue)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.post("/api/risk", response_model=RiskDataOut)
+async def create_risk_data(
     payload: RiskDataCreate, db: Session = Depends(get_db)
 ):
-    risk = RiskData(**payload.model_dump())
-    db.add(risk)
+    risk = (
+        db.query(RiskData)
+        .filter(RiskData.country == payload.country)
+        .filter(RiskData.city == payload.city)
+        .first()
+    )
+    if risk:
+        risk.country = payload.country
+        risk.city = payload.city
+        risk.latitude = payload.latitude
+        risk.longitude = payload.longitude
+        risk.risk_level = payload.risk_level
+        risk.updated_at = datetime.utcnow()
+    else:
+        risk = RiskData(**payload.model_dump())
+        db.add(risk)
     db.commit()
     db.refresh(risk)
+    await _broadcast_risk_event(
+        {
+            "type": "risk_updated",
+            "id": risk.id,
+            "at": datetime.utcnow().isoformat() + "Z",
+        }
+    )
     return risk
 
 
 @router.put("/api/risk/{risk_id}", response_model=RiskDataOut)
-def update_risk_data(
+async def update_risk_data(
     risk_id: int, payload: RiskDataUpdate, db: Session = Depends(get_db)
 ):
     risk = db.query(RiskData).filter(RiskData.id == risk_id).first()
@@ -88,16 +140,30 @@ def update_risk_data(
     risk.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(risk)
+    await _broadcast_risk_event(
+        {
+            "type": "risk_updated",
+            "id": risk.id,
+            "at": datetime.utcnow().isoformat() + "Z",
+        }
+    )
     return risk
 
 
 @router.delete("/api/risk/{risk_id}")
-def delete_risk_data(risk_id: int, db: Session = Depends(get_db)):
+async def delete_risk_data(risk_id: int, db: Session = Depends(get_db)):
     risk = db.query(RiskData).filter(RiskData.id == risk_id).first()
     if not risk:
         raise HTTPException(status_code=404, detail="Not found")
     db.delete(risk)
     db.commit()
+    await _broadcast_risk_event(
+        {
+            "type": "risk_updated",
+            "id": risk_id,
+            "at": datetime.utcnow().isoformat() + "Z",
+        }
+    )
     return {"message": "deleted"}
 
 
