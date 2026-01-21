@@ -1,4 +1,4 @@
-import CesiumMap from '../CesiumMap'
+import CesiumMap from '../map/CesiumMap'
 
 export default function MapBackground() {
   return (

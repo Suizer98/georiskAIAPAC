@@ -1,11 +1,12 @@
 # georiskAIAPAC
 
-![Tech stacks](https://skillicons.dev/icons?i=python,typescript,fastapi,docker,ubuntu,bash)
+![Tech stacks](https://skillicons.dev/icons?i=python,typescript,fastapi,react,docker,ubuntu,bash)
 
 ## Services
-- `agent` (port 7000): chat + tool-calling
-- `mcp` (port 8000): risk data API
-- `db` (port 5432): Postgres
+- `frontend`: consists of interactive web map and chatbot
+- `agent`: how chat is handled + tool-calling
+- `mcp`: risk data API and interfacing with database
+- `db`: Postgres
 
 ## Start services and clamp down services
 ```
@@ -17,11 +18,17 @@ docker compose down -v
 Create a `.env` file at the repo root with your credentials.
 Example:
 ```
-GROQ_API_KEY=your_groq_key_here
-GROQ_MODEL=llama-3.1-8b-instant
 POSTGRES_USER=georisk
-POSTGRES_PASSWORD=georisk_password
-POSTGRES_DB=georisk
+POSTGRES_PASSWORD=georisk123
+POSTGRES_DB=georiskdb
+
+GROQ_API_KEY=
+GROQ_MODEL=llama-3.1-8b-instant
+GOOGLE_API_KEY=
+GEMINI_MODEL=gemini-1.5-flash
+
+VITE_BACKEND_MCP=http://localhost:8000
+VITE_BACKEND_AGENT=http://localhost:7000
 ```
 
 ## Seed risk data manually when instance is up
@@ -29,12 +36,11 @@ POSTGRES_DB=georisk
 docker compose exec mcp python init_db.py
 ```
 
-## Agent request
-```
-curl -X POST http://localhost:7000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message":"What is the risk level for Singapore?"}'
-```
+## Endpoints and Swagger interface
+- Frontend: http://localhost:3000
+- Agent API: http://localhost:7000/docs
+- MCP API: http://localhost:8000/docs
+- Databse: http://localhost:5432/
 
 ## Risk calculation references
 - Formula: `Risk = 25 * (Military + Hazard + (1 - Economy) + (1 - Safety))` (0–100)

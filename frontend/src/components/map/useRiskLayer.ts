@@ -1,71 +1,39 @@
-import { type CSSProperties, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import {
   Cartesian3,
   Color,
   CustomDataSource,
   HeightReference,
-  Ion,
-  SceneMode,
   Viewer,
 } from 'cesium'
-import 'cesium/Build/Cesium/Widgets/widgets.css'
-import { useRiskStore } from '../store/riskStore'
-import { useLayerStore } from '../store/layerStore'
+import type { RiskItem } from '../../store/riskStore'
+import { riskColor } from './riskColor'
 
-const ionToken = import.meta.env.VITE_CESIUM_ION_TOKEN as string | undefined
-
-type CesiumMapProps = {
-  className?: string
-  style?: CSSProperties
+type HeatmapEntry = {
+  entity: ReturnType<CustomDataSource['entities']['add']>
+  baseColor: Color
+  phase: number
 }
 
-export default function CesiumMap({ className, style }: CesiumMapProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const viewerRef = useRef<Viewer | null>(null)
+export const useRiskLayer = (
+  viewerRef: React.RefObject<Viewer | null>,
+  riskData: RiskItem[],
+  enabled: boolean
+) => {
   const animationRef = useRef<number | null>(null)
   const dataSourceRef = useRef<CustomDataSource | null>(null)
-  const heatmapRef = useRef<
-    Array<{ entity: ReturnType<CustomDataSource['entities']['add']>; baseColor: Color; phase: number }>
-  >([])
-  const riskData = useRiskStore((state) => state.data)
-  const fetchRisk = useRiskStore((state) => state.fetchRisk)
-  const riskLayerEnabled = useLayerStore(
-    (state) => state.layers.find((layer) => layer.id === 'risk')?.enabled ?? true
-  )
+  const heatmapRef = useRef<HeatmapEntry[]>([])
 
   useEffect(() => {
-    if (!containerRef.current) {
+    const viewer = viewerRef.current
+    if (!viewer || dataSourceRef.current) {
       return
     }
 
-    if (ionToken) {
-      Ion.defaultAccessToken = ionToken
-    }
-
-    const viewer = new Viewer(containerRef.current, {
-      animation: false,
-      baseLayerPicker: false,
-      geocoder: false,
-      homeButton: false,
-      sceneModePicker: false,
-      timeline: false,
-      navigationHelpButton: false,
-      fullscreenButton: false,
-      sceneMode: SceneMode.SCENE2D,
-    })
-
-    viewer.scene.globe.enableLighting = true
-    viewer.scene.globe.depthTestAgainstTerrain = false
-    viewer.camera.setView({
-      destination: Cartesian3.fromDegrees(120, 15, 25000000),
-    })
-    viewerRef.current = viewer
-
     const dataSource = new CustomDataSource('risk-points')
-    dataSourceRef.current = dataSource
-    heatmapRef.current = []
-
     viewer.dataSources.add(dataSource)
+    dataSourceRef.current = dataSource
+
     const animate = () => {
       const time = performance.now() / 1000
       heatmapRef.current.forEach(({ entity, baseColor, phase }) => {
@@ -84,31 +52,30 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
     }
     animationRef.current = requestAnimationFrame(animate)
 
-    const controller = new AbortController()
-    fetchRisk(controller.signal)
-
     return () => {
-      controller.abort()
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
       }
-      viewer.destroy()
-      viewerRef.current = null
+      const currentViewer = viewerRef.current
+      if (currentViewer && !currentViewer.isDestroyed()) {
+        currentViewer.dataSources.remove(dataSource, true)
+      }
       dataSourceRef.current = null
       heatmapRef.current = []
     }
-  }, [])
+  }, [viewerRef])
 
   useEffect(() => {
     const dataSource = dataSourceRef.current
     if (!dataSource) {
       return
     }
-    dataSource.show = riskLayerEnabled
+
+    dataSource.show = enabled
     dataSource.entities.removeAll()
     heatmapRef.current = []
 
-    if (!riskLayerEnabled) {
+    if (!enabled) {
       return
     }
 
@@ -120,18 +87,7 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
         return
       }
       const risk = Number(item?.risk_level ?? 0)
-      const baseColor = (() => {
-        const clamped = Math.max(0, Math.min(100, risk))
-        const t = clamped / 100
-        const low = Color.fromCssColorString('#22c55e')
-        const mid = Color.fromCssColorString('#f59e0b')
-        const high = Color.fromCssColorString('#ef4444')
-        if (t < 0.5) {
-          return Color.lerp(low, mid, t * 2, new Color())
-        }
-        return Color.lerp(mid, high, (t - 0.5) * 2, new Color())
-      })()
-
+      const baseColor = riskColor(risk)
       const radius = 120000 + (Math.min(risk, 100) / 100) * 220000
       const entity = dataSource.entities.add({
         position: Cartesian3.fromDegrees(item.longitude, item.latitude),
@@ -170,17 +126,5 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
       })
     })
     viewerRef.current?.scene.requestRender()
-  }, [riskData, riskLayerEnabled])
-
-  return (
-    <div
-      ref={containerRef}
-      className={className}
-      style={{
-        width: '100%',
-        height: '100%',
-        ...style,
-      }}
-    />
-  )
+  }, [riskData, enabled, viewerRef])
 }
