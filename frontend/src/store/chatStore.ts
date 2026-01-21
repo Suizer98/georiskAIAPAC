@@ -140,7 +140,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({
       sendingMessage: true,
       messageError: null,
-      chatMessages: [...chatMessages, optimisticMessage],
+      chatMessages: [
+        ...chatMessages,
+        optimisticMessage,
+        { role: 'assistant', content: '__loading__' },
+      ],
     })
     try {
       const response = await fetch('/api/chat', {
@@ -167,14 +171,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
         sendingMessage: false,
         activeChatUuid: data.uuid ?? state.activeChatUuid,
         composingNewChat: false,
-        chatMessages: [...state.chatMessages, replyMessage],
+        chatMessages: state.chatMessages
+          .filter((msg) => msg.content !== '__loading__')
+          .concat(replyMessage),
       }))
       await get().fetchChats()
       if (shouldRefreshRisk) {
         await useRiskStore.getState().fetchRisk()
       }
     } catch (error) {
-      set({ sendingMessage: false, messageError: 'Unable to send message.' })
+      set((state) => ({
+        sendingMessage: false,
+        messageError: 'Unable to send message.',
+        chatMessages: state.chatMessages.filter(
+          (msg) => msg.content !== '__loading__'
+        ),
+      }))
     }
   },
   deleteChat: async (uuid) => {

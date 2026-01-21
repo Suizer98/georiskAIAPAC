@@ -20,6 +20,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+
 class ChatRequest(BaseModel):
     message: str
     uuid: Optional[str] = None
