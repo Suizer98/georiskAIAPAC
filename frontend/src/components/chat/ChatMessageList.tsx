@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { formatDate } from '../../utils/chatFormat'
 import type { ChatMessage } from '../../store/chatStore'
 
@@ -7,6 +8,7 @@ type ChatMessageListProps = {
   loadingMessages: boolean
   messageError: string | null
   bottomRef: RefObject<HTMLDivElement | null>
+  showPending: boolean
 }
 
 export default function ChatMessageList({
@@ -14,10 +16,12 @@ export default function ChatMessageList({
   loadingMessages,
   messageError,
   bottomRef,
+  showPending,
 }: ChatMessageListProps) {
+  const hasLoading = messages.some((message) => message.content === '__loading__')
   return (
     <>
-      {loadingMessages ? (
+      {loadingMessages || (showPending && !hasLoading) ? (
         <div className="mr-8 rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3">
           <p className="text-xs uppercase text-slate-400">assistant</p>
           <div className="mt-2 flex items-center gap-1">
@@ -28,8 +32,9 @@ export default function ChatMessageList({
         </div>
       ) : null}
       {messageError ? <p className="text-sm text-red-400">{messageError}</p> : null}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-        <div className="flex flex-col gap-3 pb-6">
+      <ScrollArea.Root className="flex-1 min-h-0">
+        <ScrollArea.Viewport className="h-full w-full pr-1">
+          <div className="flex flex-col gap-3 pb-6">
           {messages.map((message, index) => {
             const isLoading = message.content === '__loading__'
             return (
@@ -62,8 +67,15 @@ export default function ChatMessageList({
             )
           })}
           <div ref={bottomRef} />
-        </div>
-      </div>
+          </div>
+        </ScrollArea.Viewport>
+        <ScrollArea.Scrollbar
+          orientation="vertical"
+          className="flex touch-none select-none p-0.5"
+        >
+          <ScrollArea.Thumb className="relative flex-1 rounded-full bg-white/20" />
+        </ScrollArea.Scrollbar>
+      </ScrollArea.Root>
     </>
   )
 }

@@ -24,6 +24,7 @@ export default function ChatDrawer() {
   const loadingMessages = useChatStore((state) => state.loadingMessages)
   const messageError = useChatStore((state) => state.messageError)
   const sendingMessage = useChatStore((state) => state.sendingMessage)
+  const sendingChatUuid = useChatStore((state) => state.sendingChatUuid)
   const composingNewChat = useChatStore((state) => state.composingNewChat)
   const [panelWidth, setPanelWidth] = useState(360)
   const [draft, setDraft] = useState('')
@@ -119,6 +120,9 @@ export default function ChatDrawer() {
                   loadingMessages={loadingMessages}
                   messageError={messageError}
                   bottomRef={bottomRef}
+                  showPending={
+                    sendingMessage && sendingChatUuid === activeChatUuid
+                  }
                 />
                 <ChatComposer
                   draft={draft}

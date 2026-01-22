@@ -137,6 +137,21 @@
   {
     "type": "function",
     "function": {
+      "name": "score_gold",
+      "description": "Compute gold market attention score (0-1) from a real-time source.",
+      "request": { "method": "GET", "path": "/api/score/gold" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": { "type": "string" }
+        },
+        "required": ["country"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "score_overall",
       "description": "Compute overall risk score using the fixed-source factor scores.",
       "request": { "method": "GET", "path": "/api/score/overall" },

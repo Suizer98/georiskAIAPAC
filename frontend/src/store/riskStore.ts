@@ -15,6 +15,8 @@ type RiskState = {
   loading: boolean
   error: string | null
   streamConnected: boolean
+  lastEvent: { type?: string; id?: number; at?: string } | null
+  lastSnapshot: string | null
   fetchRisk: (signal?: AbortSignal) => Promise<void>
 }
 
@@ -25,6 +27,8 @@ export const useRiskStore = create<RiskState>((set) => ({
   loading: false,
   error: null,
   streamConnected: false,
+  lastEvent: null,
+  lastSnapshot: null,
   fetchRisk: async (signal) => {
     set({ loading: true, error: null })
     try {
@@ -33,7 +37,27 @@ export const useRiskStore = create<RiskState>((set) => ({
         throw new Error(`Failed to load risk data (${response.status})`)
       }
       const payload = await response.json()
-      set({ data: Array.isArray(payload) ? payload : [] })
+      const nextData = Array.isArray(payload) ? payload : []
+      set((state) => {
+        const snapshot = JSON.stringify(
+          [...nextData]
+            .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+            .map((item) => ({
+              id: item.id,
+              risk_level: item.risk_level,
+              updated_at: item.updated_at,
+            }))
+        )
+        const hasChanged =
+          state.lastSnapshot !== null && snapshot !== state.lastSnapshot
+        return {
+          data: nextData,
+          lastSnapshot: snapshot,
+          lastEvent: hasChanged
+            ? { type: 'risk_updated', at: new Date().toISOString() }
+            : state.lastEvent,
+        }
+      })
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         set({ loading: false })

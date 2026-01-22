@@ -19,6 +19,7 @@ type ChatState = {
   loadingMessages: boolean
   messageError: string | null
   sendingMessage: boolean
+  sendingChatUuid: string | null
   setDrawerOpened: (opened: boolean) => void
   toggleDrawer: () => void
   fetchChats: (signal?: AbortSignal) => Promise<void>
@@ -49,6 +50,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   loadingMessages: false,
   messageError: null,
   sendingMessage: false,
+  sendingChatUuid: null,
   setDrawerOpened: (opened) => set({ drawerOpened: opened }),
   toggleDrawer: () =>
     set((state) => ({ drawerOpened: !state.drawerOpened })),
@@ -139,6 +141,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
     set({
       sendingMessage: true,
+      sendingChatUuid: activeChatUuid ?? null,
       messageError: null,
       chatMessages: [
         ...chatMessages,
@@ -169,6 +172,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       set((state) => ({
         sendingMessage: false,
+        sendingChatUuid: null,
         activeChatUuid: data.uuid ?? state.activeChatUuid,
         composingNewChat: false,
         chatMessages: state.chatMessages
@@ -182,6 +186,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } catch (error) {
       set((state) => ({
         sendingMessage: false,
+        sendingChatUuid: null,
         messageError: 'Unable to send message.',
         chatMessages: state.chatMessages.filter(
           (msg) => msg.content !== '__loading__'

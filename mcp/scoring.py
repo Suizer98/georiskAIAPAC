@@ -217,6 +217,57 @@ def score_hazard(country: str) -> dict[str, Any]:
             "retrieved_at": datetime.utcnow().isoformat() + "Z",
         }
 
+
+def score_gold(country: str) -> dict[str, Any]:
+    source = "GDELT DOC 2.0 API (gold market attention)"
+    try:
+        query = f'gold AND "{country}"'
+        url = "https://api.gdeltproject.org/api/v2/doc/doc"
+        resp = httpx.get(
+            url,
+            params={
+                "query": query,
+                "mode": "TimelineVol",
+                "format": "json",
+                "timespan": "7d",
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+        timeline = payload.get("timeline", [])
+        total_mentions = sum(
+            float(row.get("value", 0)) for row in timeline if row
+        )
+
+        gold_score = _score_from_thresholds(
+            total_mentions,
+            [
+                (0, 0.2),
+                (5, 0.35),
+                (20, 0.5),
+                (50, 0.65),
+                (100, 0.8),
+                (10_000, 0.95),
+            ],
+        )
+        return {
+            "score": _clamp(gold_score),
+            "value": total_mentions,
+            "source": source,
+            "retrieved_at": datetime.utcnow().isoformat() + "Z",
+        }
+    except Exception as exc:
+        logger.warning(f"Error in score_gold: {exc}")
+        return {
+            "score": 0.5,
+            "value": None,
+            "source": source,
+            "error": str(exc),
+            "retrieved_at": datetime.utcnow().isoformat() + "Z",
+        }
+
+
 def score_military(country: str) -> dict[str, Any]:
     source = "GDELT GEO 2.0 API (Conflict Intensity)"
     try:
@@ -291,18 +342,20 @@ def score_overall(country: str) -> dict[str, Any]:
     safety = score_safety(country)
     hazard = score_hazard(country)
     military = score_military(country)
+    gold = score_gold(country)
     
     errors = [
         component["error"]
-        for component in (economy, safety, hazard, military)
+        for component in (economy, safety, hazard, military, gold)
         if component.get("error")
     ]
     
-    risk = 25.0 * (
-        military["score"]
-        + hazard["score"]
-        + (1.0 - economy["score"])
-        + (1.0 - safety["score"])
+    risk = (
+        (25.0 * military["score"])
+        + (10.0 * hazard["score"])
+        + (25.0 * (1.0 - economy["score"]))
+        + (25.0 * (1.0 - safety["score"]))
+        + (15.0 * gold["score"])
     )
     return {
         "risk_level": round(_clamp(risk / 100.0) * 100.0, 2),
@@ -311,8 +364,9 @@ def score_overall(country: str) -> dict[str, Any]:
             "economy": economy,
             "safety": safety,
             "hazard": hazard,
+            "gold": gold,
         },
         "errors": errors,
         "retrieved_at": datetime.utcnow().isoformat() + "Z",
-        "formula": "25 * (military + hazard + (1 - economy) + (1 - safety))",
+        "formula": "25*military + 10*hazard + 25*(1-economy) + 25*(1-safety) + 15*gold",
     }

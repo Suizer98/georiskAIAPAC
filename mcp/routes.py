@@ -19,10 +19,12 @@ from schemas import RiskDataCreate, RiskDataOut, RiskDataUpdate
 from scoring import (
     score_economy,
     score_hazard,
+    score_gold,
     score_military,
     score_overall,
     score_safety,
 )
+from pricing import list_price_data
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -214,9 +216,19 @@ def get_hazard_score(country: str):
     return score_hazard(country)
 
 
+@router.get("/api/score/gold")
+def get_gold_score(country: str):
+    return score_gold(country)
+
+
 @router.get("/api/score/overall")
 def get_overall_score(country: str):
     return score_overall(country)
+
+
+@router.get("/api/price")
+def get_price_data():
+    return list_price_data()
 
 
 def _mcp_tools_payload() -> list[dict]:

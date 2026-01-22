@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 export type MapLayer = {
-  id: 'risk'
+  id: 'risk' | 'price'
   label: string
   enabled: boolean
 }
@@ -13,7 +13,10 @@ type LayerState = {
 }
 
 export const useLayerStore = create<LayerState>((set) => ({
-  layers: [{ id: 'risk', label: 'Risk Heatmap', enabled: true }],
+  layers: [
+    { id: 'risk', label: 'Risk Heatmap', enabled: true },
+    { id: 'price', label: 'Metals Price', enabled: false },
+  ],
   toggleLayer: (id) =>
     set((state) => ({
       layers: state.layers.map((layer) =>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { CheckIcon, Cross2Icon, TrashIcon } from '@radix-ui/react-icons'
 import { formatChatId, formatDate } from '../../utils/chatFormat'
 import type { ChatSummary } from '../../store/chatStore'
@@ -41,8 +42,9 @@ export default function ChatList({
       {!loading && !error && chats.length === 0 ? (
         <p className="text-sm text-slate-400">No chats available yet.</p>
       ) : null}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-        <div className="flex flex-col gap-3 pb-6">
+      <ScrollArea.Root className="flex-1 min-h-0">
+        <ScrollArea.Viewport className="h-full w-full pr-1">
+          <div className="flex flex-col gap-3 pb-6">
           {chats.map((chat, index) => {
             const timestamp =
               chat.modified_at || chat.updated_at || chat.created_at
@@ -104,8 +106,15 @@ export default function ChatList({
               </div>
             )
           })}
-        </div>
-      </div>
+          </div>
+        </ScrollArea.Viewport>
+        <ScrollArea.Scrollbar
+          orientation="vertical"
+          className="flex touch-none select-none p-0.5"
+        >
+          <ScrollArea.Thumb className="relative flex-1 rounded-full bg-white/20" />
+        </ScrollArea.Scrollbar>
+      </ScrollArea.Root>
     </>
   )
 }
