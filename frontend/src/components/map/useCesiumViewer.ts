@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Cartesian3, Ion, SceneMode, Viewer } from 'cesium'
+import { Cartesian3, Ion, SceneMode, ScreenSpaceEventType, Viewer } from 'cesium'
 
 const ionToken = import.meta.env.VITE_CESIUM_ION_TOKEN as string | undefined
 
@@ -27,7 +27,21 @@ export const useCesiumViewer = (
       navigationHelpButton: false,
       fullscreenButton: false,
       sceneMode: SceneMode.SCENE2D,
+      infoBox: false,
+      selectionIndicator: false,
     })
+
+    // Ensure default entity selection doesn't trigger the Cesium InfoBox.
+    viewer.screenSpaceEventHandler.removeInputAction(ScreenSpaceEventType.LEFT_CLICK)
+    viewer.screenSpaceEventHandler.removeInputAction(
+      ScreenSpaceEventType.LEFT_DOUBLE_CLICK
+    )
+    if (viewer.infoBox?.container) {
+      viewer.infoBox.container.style.display = 'none'
+    }
+    if (viewer.infoBox?.viewModel) {
+      viewer.infoBox.viewModel.showInfo = false
+    }
 
     viewer.scene.globe.enableLighting = true
     viewer.scene.globe.depthTestAgainstTerrain = false

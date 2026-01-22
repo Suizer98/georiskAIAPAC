@@ -4,10 +4,13 @@ import {
   Color,
   CustomDataSource,
   HeightReference,
+  ScreenSpaceEventHandler,
+  ScreenSpaceEventType,
   Viewer,
 } from 'cesium'
 import type { RiskItem } from '../../store/riskStore'
 import { riskColor } from './riskColor'
+import type { MapPopupSelection } from './MapPopup'
 
 type HeatmapEntry = {
   entity: ReturnType<CustomDataSource['entities']['add']>
@@ -18,11 +21,13 @@ type HeatmapEntry = {
 export const useRiskLayer = (
   viewerRef: React.RefObject<Viewer | null>,
   riskData: RiskItem[],
-  enabled: boolean
+  enabled: boolean,
+  onSelect: (data: MapPopupSelection | null) => void
 ) => {
   const animationRef = useRef<number | null>(null)
   const dataSourceRef = useRef<CustomDataSource | null>(null)
   const heatmapRef = useRef<HeatmapEntry[]>([])
+  const clickHandlerRef = useRef<ScreenSpaceEventHandler | null>(null)
 
   useEffect(() => {
     const viewer = viewerRef.current
@@ -33,6 +38,22 @@ export const useRiskLayer = (
     const dataSource = new CustomDataSource('risk-points')
     viewer.dataSources.add(dataSource)
     dataSourceRef.current = dataSource
+
+    clickHandlerRef.current = new ScreenSpaceEventHandler(viewer.scene.canvas)
+    clickHandlerRef.current.setInputAction((click: any) => {
+      const picked = viewer.scene.pick(click.position)
+      const entity = picked?.id
+
+      if (entity && dataSource.entities.contains(entity)) {
+        const item = entity.properties.item.getValue()
+        const rect = viewer.scene.canvas.getBoundingClientRect()
+        onSelect({
+          x: rect.left + click.position.x,
+          y: rect.top + click.position.y,
+          payload: { type: 'risk', item },
+        })
+      }
+    }, ScreenSpaceEventType.LEFT_CLICK)
 
     const animate = () => {
       const time = performance.now() / 1000
@@ -56,6 +77,10 @@ export const useRiskLayer = (
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
       }
+      if (clickHandlerRef.current) {
+        clickHandlerRef.current.destroy()
+        clickHandlerRef.current = null
+      }
       const currentViewer = viewerRef.current
       if (currentViewer && !currentViewer.isDestroyed()) {
         currentViewer.dataSources.remove(dataSource, true)
@@ -63,7 +88,7 @@ export const useRiskLayer = (
       dataSourceRef.current = null
       heatmapRef.current = []
     }
-  }, [viewerRef])
+  }, [viewerRef, onSelect])
 
   useEffect(() => {
     const dataSource = dataSourceRef.current
@@ -111,6 +136,7 @@ export const useRiskLayer = (
         label: {
           text: `${Math.round(risk)}`,
           font: '12px sans-serif',
+          show: false,
           fillColor: Color.WHITE,
           outlineColor: Color.BLACK,
           outlineWidth: 3,
@@ -118,6 +144,7 @@ export const useRiskLayer = (
           heightReference: HeightReference.NONE,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
+        properties: { item },
       })
       heatmapRef.current.push({
         entity,

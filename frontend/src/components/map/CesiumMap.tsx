@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useRef } from 'react'
+import { type CSSProperties, useEffect, useRef, useState, useCallback } from 'react'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 import { useRiskStore } from '../../store/riskStore'
 import { usePriceStore } from '../../store/priceStore'
@@ -6,6 +6,7 @@ import { useLayerStore } from '../../store/layerStore'
 import { useCesiumViewer } from './useCesiumViewer'
 import { useRiskLayer } from './useRiskLayer'
 import { usePriceLayer } from './usePriceLayer'
+import MapPopup, { type MapPopupSelection } from './MapPopup'
 
 type CesiumMapProps = {
   className?: string
@@ -15,6 +16,8 @@ type CesiumMapProps = {
 export default function CesiumMap({ className, style }: CesiumMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const viewerRef = useCesiumViewer(containerRef)
+  const [popupData, setPopupData] = useState<MapPopupSelection | null>(null)
+
   const riskData = useRiskStore((state) => state.data)
   const fetchRisk = useRiskStore((state) => state.fetchRisk)
   const priceData = usePriceStore((state) => state.data)
@@ -27,8 +30,12 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
       state.layers.find((layer) => layer.id === 'price')?.enabled ?? false
   )
 
-  useRiskLayer(viewerRef, riskData, riskLayerEnabled)
-  usePriceLayer(viewerRef, priceData, priceLayerEnabled)
+  const handleSelect = useCallback((data: MapPopupSelection | null) => {
+    setPopupData(data)
+  }, [])
+
+  useRiskLayer(viewerRef, riskData, riskLayerEnabled, handleSelect)
+  usePriceLayer(viewerRef, priceData, priceLayerEnabled, handleSelect)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -46,6 +53,15 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
         height: '100%',
         ...style,
       }}
-    />
+    >
+      {popupData && (
+        <MapPopup
+          x={popupData.x}
+          y={popupData.y}
+          payload={popupData.payload}
+          onClose={() => setPopupData(null)}
+        />
+      )}
+    </div>
   )
 }

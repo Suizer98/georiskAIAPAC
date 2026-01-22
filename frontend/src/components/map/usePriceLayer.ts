@@ -11,15 +11,18 @@ import {
   Viewer,
 } from 'cesium'
 import type { PriceItem } from '../../store/priceStore'
+import type { MapPopupSelection } from './MapPopup'
 
 export const usePriceLayer = (
   viewerRef: React.RefObject<Viewer | null>,
   priceData: PriceItem[],
-  enabled: boolean
+  enabled: boolean,
+  onSelect: (data: MapPopupSelection | null) => void
 ) => {
   const dataSourceRef = useRef<CustomDataSource | null>(null)
   const hoverRef = useRef<any>(null)
   const hoverHandlerRef = useRef<ScreenSpaceEventHandler | null>(null)
+  const clickHandlerRef = useRef<ScreenSpaceEventHandler | null>(null)
 
   useEffect(() => {
     const viewer = viewerRef.current
@@ -35,6 +38,10 @@ export const usePriceLayer = (
     hoverHandlerRef.current.setInputAction((movement: any) => {
       const picked = viewer.scene.pick(movement.endPosition)
       const entity = picked?.id
+      // Check if this entity belongs to our data source
+      if (entity && !dataSource.entities.contains(entity)) {
+        return
+      }
 
       if (hoverRef.current && hoverRef.current !== entity) {
         if (hoverRef.current.point) {
@@ -53,17 +60,37 @@ export const usePriceLayer = (
       }
     }, ScreenSpaceEventType.MOUSE_MOVE)
 
+    clickHandlerRef.current = new ScreenSpaceEventHandler(viewer.scene.canvas)
+    clickHandlerRef.current.setInputAction((click: any) => {
+      const picked = viewer.scene.pick(click.position)
+      const entity = picked?.id
+
+      if (entity && dataSource.entities.contains(entity)) {
+        const item = entity.properties.item.getValue()
+        const rect = viewer.scene.canvas.getBoundingClientRect()
+        onSelect({
+          x: rect.left + click.position.x,
+          y: rect.top + click.position.y,
+          payload: { type: 'price', item },
+        })
+      }
+    }, ScreenSpaceEventType.LEFT_CLICK)
+
     return () => {
       if (hoverHandlerRef.current) {
         hoverHandlerRef.current.destroy()
         hoverHandlerRef.current = null
+      }
+      if (clickHandlerRef.current) {
+        clickHandlerRef.current.destroy()
+        clickHandlerRef.current = null
       }
       if (viewer && !viewer.isDestroyed() && dataSourceRef.current) {
         viewer.dataSources.remove(dataSourceRef.current, true)
       }
       dataSourceRef.current = null
     }
-  }, [viewerRef])
+  }, [viewerRef, onSelect])
 
   useEffect(() => {
     const dataSource = dataSourceRef.current
@@ -104,14 +131,6 @@ export const usePriceLayer = (
           ? `${localCode} ${item.silver_local.toFixed(2)}`
           : 'N/A'
       
-      const description = `
-        <div style="padding: 4px;">
-          <div style="font-size: 1.1em; margin-bottom: 4px;"><strong>${item.country}</strong></div>
-          <div style="margin-bottom: 2px;">Gold: ${goldUsd} <span style="opacity: 0.7;">(${goldLocal})</span></div>
-          <div>Silver: ${silverUsd} <span style="opacity: 0.7;">(${silverLocal})</span></div>
-        </div>
-      `
-
       dataSource.entities.add({
         position: Cartesian3.fromDegrees(item.longitude, item.latitude),
         point: {
@@ -135,7 +154,7 @@ export const usePriceLayer = (
           heightReference: HeightReference.NONE,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
-        description: description,
+        properties: { item: item },
       })
     })
 
