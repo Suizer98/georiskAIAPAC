@@ -1,4 +1,5 @@
 import React from 'react'
+import type { Cartesian3 } from 'cesium'
 import * as Popover from '@radix-ui/react-popover'
 import type { PriceItem } from '../../store/priceStore'
 import type { RiskItem } from '../../store/riskStore'
@@ -10,6 +11,7 @@ export type MapPopupPayload =
 export type MapPopupSelection = {
   x: number
   y: number
+  position?: Cartesian3
   payload: MapPopupPayload
 }
 
@@ -25,6 +27,8 @@ const PricePopupContent = ({ item }: { item: PriceItem }) => {
     typeof item.gold_usd === 'number' ? `$${item.gold_usd.toFixed(2)}` : 'N/A'
   const silverUsd =
     typeof item.silver_usd === 'number' ? `$${item.silver_usd.toFixed(2)}` : 'N/A'
+  const goldUnit = item.gold_unit ?? item.unit ?? 'unit'
+  const silverUnit = item.silver_unit ?? item.unit ?? 'unit'
   const localCode = item.currency ?? 'LOCAL'
   const goldLocal =
     typeof item.gold_local === 'number'
@@ -40,20 +44,24 @@ const PricePopupContent = ({ item }: { item: PriceItem }) => {
       <div className="text-lg font-bold">{item.country}</div>
       <div className="space-y-1 text-sm">
         <div className="flex justify-between gap-4">
-          <span className="text-gray-400">Gold (USD)</span>
+          <span className="text-gray-400">Gold (USD / {goldUnit})</span>
           <span className="font-mono">{goldUsd}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-gray-400">Gold ({localCode})</span>
+          <span className="text-gray-400">
+            Gold ({localCode} / {goldUnit})
+          </span>
           <span className="font-mono text-gray-300">{goldLocal}</span>
         </div>
         <div className="my-1 h-px bg-gray-700" />
         <div className="flex justify-between gap-4">
-          <span className="text-gray-400">Silver (USD)</span>
+          <span className="text-gray-400">Silver (USD / {silverUnit})</span>
           <span className="font-mono">{silverUsd}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-gray-400">Silver ({localCode})</span>
+          <span className="text-gray-400">
+            Silver ({localCode} / {silverUnit})
+          </span>
           <span className="font-mono text-gray-300">{silverLocal}</span>
         </div>
       </div>

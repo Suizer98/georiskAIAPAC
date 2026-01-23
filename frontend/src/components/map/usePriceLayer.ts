@@ -68,9 +68,13 @@ export const usePriceLayer = (
       if (entity && dataSource.entities.contains(entity)) {
         const item = entity.properties.item.getValue()
         const rect = viewer.scene.canvas.getBoundingClientRect()
+        const position =
+          entity.position?.getValue(viewer.clock.currentTime) ??
+          Cartesian3.fromDegrees(item.longitude, item.latitude)
         onSelect({
           x: rect.left + click.position.x,
           y: rect.top + click.position.y,
+          position,
           payload: { type: 'price', item },
         })
       }

@@ -1,4 +1,4 @@
-import { MagicWandIcon } from '@radix-ui/react-icons'
+import { ChatBubbleIcon } from '@radix-ui/react-icons'
 import { NavLink } from 'react-router-dom'
 import { useChatStore } from '../../store/chatStore'
 
@@ -17,7 +17,7 @@ export default function TopBar() {
           className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white shadow-[0_0_12px_rgba(99,102,241,0.4)] hover:bg-white/10"
         >
           <span className="sr-only">Open chat</span>
-          <MagicWandIcon className="h-6 w-6 text-indigo-200" />
+          <ChatBubbleIcon className="h-6 w-6 text-indigo-200" />
         </button>
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold">Georisk AI APAC</h1>

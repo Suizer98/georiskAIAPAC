@@ -10,6 +10,9 @@ export type PriceItem = {
   gold_local: number | null
   silver_local: number | null
   fx_rate: number | null
+  unit?: string | null
+  gold_unit?: string | null
+  silver_unit?: string | null
   retrieved_at?: string
 }
 

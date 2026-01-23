@@ -28,6 +28,8 @@ export const useRiskLayer = (
   const dataSourceRef = useRef<CustomDataSource | null>(null)
   const heatmapRef = useRef<HeatmapEntry[]>([])
   const clickHandlerRef = useRef<ScreenSpaceEventHandler | null>(null)
+  const hoverHandlerRef = useRef<ScreenSpaceEventHandler | null>(null)
+  const hoverRef = useRef<any>(null)
 
   useEffect(() => {
     const viewer = viewerRef.current
@@ -39,6 +41,27 @@ export const useRiskLayer = (
     viewer.dataSources.add(dataSource)
     dataSourceRef.current = dataSource
 
+    hoverHandlerRef.current = new ScreenSpaceEventHandler(viewer.scene.canvas)
+    hoverHandlerRef.current.setInputAction((movement: any) => {
+      const picked = viewer.scene.pick(movement.endPosition)
+      const entity = picked?.id
+      if (entity && !dataSource.entities.contains(entity)) {
+        return
+      }
+
+      if (hoverRef.current && hoverRef.current !== entity) {
+        if (hoverRef.current.label) {
+          hoverRef.current.label.show = false
+        }
+        hoverRef.current = null
+      }
+
+      if (entity && entity.label) {
+        entity.label.show = true
+        hoverRef.current = entity
+      }
+    }, ScreenSpaceEventType.MOUSE_MOVE)
+
     clickHandlerRef.current = new ScreenSpaceEventHandler(viewer.scene.canvas)
     clickHandlerRef.current.setInputAction((click: any) => {
       const picked = viewer.scene.pick(click.position)
@@ -47,9 +70,13 @@ export const useRiskLayer = (
       if (entity && dataSource.entities.contains(entity)) {
         const item = entity.properties.item.getValue()
         const rect = viewer.scene.canvas.getBoundingClientRect()
+        const position =
+          entity.position?.getValue(viewer.clock.currentTime) ??
+          Cartesian3.fromDegrees(item.longitude, item.latitude)
         onSelect({
           x: rect.left + click.position.x,
           y: rect.top + click.position.y,
+          position,
           payload: { type: 'risk', item },
         })
       }
@@ -77,6 +104,11 @@ export const useRiskLayer = (
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current)
       }
+      if (hoverHandlerRef.current) {
+        hoverHandlerRef.current.destroy()
+        hoverHandlerRef.current = null
+      }
+      hoverRef.current = null
       if (clickHandlerRef.current) {
         clickHandlerRef.current.destroy()
         clickHandlerRef.current = null
@@ -134,7 +166,7 @@ export const useRiskLayer = (
           outlineColor: baseColor.withAlpha(0.9),
         },
         label: {
-          text: `${Math.round(risk)}`,
+          text: item.city ?? item.country ?? `${Math.round(risk)}`,
           font: '12px sans-serif',
           show: false,
           fillColor: Color.WHITE,

@@ -167,6 +167,7 @@ def list_price_data() -> dict[str, Any]:
 
     metals, metals_source = _get_metals_spot()
     fx_rates = _get_fx_rates_usd()
+    metals_unit = "troy oz"
     items: list[dict[str, Any]] = []
 
     for country in APAC_COUNTRIES:
@@ -195,6 +196,7 @@ def list_price_data() -> dict[str, Any]:
                 "gold_local": gold_local,
                 "silver_local": silver_local,
                 "fx_rate": fx_rate,
+                "unit": metals_unit,
                 "retrieved_at": now.isoformat() + "Z",
             }
         )
@@ -202,6 +204,7 @@ def list_price_data() -> dict[str, Any]:
     payload = {
         "items": items,
         "retrieved_at": now.isoformat() + "Z",
+        "unit": metals_unit,
         "sources": {
             "metals": metals_source,
             "fx": "https://open.er-api.com/v6/latest/USD",
