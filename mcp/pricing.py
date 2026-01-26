@@ -1,32 +1,27 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 import os
 from typing import Any
 
 import httpx
 
+from constant import (
+    APAC_COUNTRIES,
+    CACHE_TTL,
+    RESTCOUNTRIES_API_URL,
+    EXCHANGERATE_API_URL,
+    METALPRICE_API_URL,
+    GOLDPRICE_API_URL,
+    ER_API_URL,
+    TIMEOUT_STANDARD,
+    TIMEOUT_MEDIUM,
+    HTTP_USER_AGENT,
+    METALS_UNIT,
+)
+
 logger = logging.getLogger(__name__)
-
-APAC_COUNTRIES = [
-    "Australia",
-    "China",
-    "Hong Kong",
-    "India",
-    "Indonesia",
-    "Japan",
-    "Malaysia",
-    "New Zealand",
-    "Philippines",
-    "Singapore",
-    "South Korea",
-    "Taiwan",
-    "Thailand",
-    "Vietnam",
-]
-
-CACHE_TTL = timedelta(minutes=10)
 _cache_payload: dict[str, Any] | None = None
 _cache_time: datetime | None = None
 
@@ -80,7 +75,7 @@ def _get_metals_spot() -> tuple[dict[str, float | None], str]:
     if exch_key:
         sources.append(
             (
-                "https://api.exchangerate.host/latest?base=USD&symbols=XAU,XAG"
+                f"{EXCHANGERATE_API_URL}?base=USD&symbols=XAU,XAG"
                 f"&access_key={exch_key}",
                 _parse_exchangerate_host,
                 {},
@@ -90,7 +85,7 @@ def _get_metals_spot() -> tuple[dict[str, float | None], str]:
     if metalprice_key:
         sources.append(
             (
-                "https://api.metalpriceapi.com/v1/latest"
+                f"{METALPRICE_API_URL}"
                 f"?api_key={metalprice_key}&base=USD&currencies=XAU,XAG",
                 _parse_exchangerate_host,
                 {},
@@ -98,7 +93,7 @@ def _get_metals_spot() -> tuple[dict[str, float | None], str]:
         )
     sources.append(
         (
-            "https://data-asg.goldprice.org/dbXRates/USD",
+            GOLDPRICE_API_URL,
             _parse_goldprice,
             {
                 "Referer": "https://www.goldprice.org/",
@@ -107,11 +102,11 @@ def _get_metals_spot() -> tuple[dict[str, float | None], str]:
         )
     )
 
-    headers_base = {"User-Agent": "Mozilla/5.0"}
+    headers_base = {"User-Agent": HTTP_USER_AGENT}
     for url, parser, extra_headers in sources:
         try:
             headers = {**headers_base, **extra_headers}
-            resp = httpx.get(url, timeout=10, headers=headers)
+            resp = httpx.get(url, timeout=TIMEOUT_STANDARD, headers=headers)
             resp.raise_for_status()
             payload = resp.json()
             data = parser(payload)
@@ -124,9 +119,9 @@ def _get_metals_spot() -> tuple[dict[str, float | None], str]:
 
 
 def _get_fx_rates_usd() -> dict[str, float]:
-    url = "https://open.er-api.com/v6/latest/USD"
+    url = ER_API_URL
     try:
-        resp = httpx.get(url, timeout=10)
+        resp = httpx.get(url, timeout=TIMEOUT_STANDARD)
         resp.raise_for_status()
         payload = resp.json()
         rates = payload.get("rates", {})
@@ -142,8 +137,8 @@ def _get_fx_rates_usd() -> dict[str, float]:
 
 
 def _get_country_meta(country: str) -> tuple[str | None, float | None, float | None]:
-    url = f"https://restcountries.com/v3.1/name/{country}"
-    resp = httpx.get(url, timeout=8)
+    url = f"{RESTCOUNTRIES_API_URL}/{country}"
+    resp = httpx.get(url, timeout=TIMEOUT_MEDIUM)
     resp.raise_for_status()
     payload = resp.json()
     if not isinstance(payload, list) or not payload:
@@ -167,7 +162,6 @@ def list_price_data() -> dict[str, Any]:
 
     metals, metals_source = _get_metals_spot()
     fx_rates = _get_fx_rates_usd()
-    metals_unit = "troy oz"
     items: list[dict[str, Any]] = []
 
     for country in APAC_COUNTRIES:
@@ -196,7 +190,7 @@ def list_price_data() -> dict[str, Any]:
                 "gold_local": gold_local,
                 "silver_local": silver_local,
                 "fx_rate": fx_rate,
-                "unit": metals_unit,
+                "unit": METALS_UNIT,
                 "retrieved_at": now.isoformat() + "Z",
             }
         )
@@ -204,11 +198,11 @@ def list_price_data() -> dict[str, Any]:
     payload = {
         "items": items,
         "retrieved_at": now.isoformat() + "Z",
-        "unit": metals_unit,
+        "unit": METALS_UNIT,
         "sources": {
             "metals": metals_source,
-            "fx": "https://open.er-api.com/v6/latest/USD",
-            "country": "https://restcountries.com",
+            "fx": ER_API_URL,
+            "country": RESTCOUNTRIES_API_URL,
         },
     }
     _cache_payload = payload

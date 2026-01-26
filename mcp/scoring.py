@@ -6,13 +6,27 @@ from typing import Any
 
 import httpx
 
+from constant import (
+    RESTCOUNTRIES_API_URL,
+    WORLDBANK_API_URL,
+    USGS_EARTHQUAKE_API_URL,
+    GDELT_DOC_API_URL,
+    GDELT_GEO_API_URL,
+    TIMEOUT_SHORT,
+    TIMEOUT_STANDARD,
+    TIMEOUT_LONG,
+    GDELT_TIMESPAN_7D,
+    GDELT_TIMESPAN_24H,
+    GDELT_TIMESPAN_30D,
+)
+
 logger = logging.getLogger(__name__)
 
 
 def _get_iso2_code(country_name: str) -> str:
     try:
-        url = f"https://restcountries.com/v3.1/name/{country_name}"
-        resp = httpx.get(url, timeout=5)
+        url = f"{RESTCOUNTRIES_API_URL}/{country_name}"
+        resp = httpx.get(url, timeout=TIMEOUT_SHORT)
         resp.raise_for_status()
         data = resp.json()
         if isinstance(data, list) and len(data) > 0:
@@ -24,10 +38,8 @@ def _get_iso2_code(country_name: str) -> str:
 
 
 def _world_bank_indicator(iso2: str, indicator: str) -> float | None:
-    url = (
-        f"https://api.worldbank.org/v2/country/{iso2}/indicator/{indicator}"
-    )
-    resp = httpx.get(url, params={"format": "json"}, timeout=10)
+    url = f"{WORLDBANK_API_URL}/{iso2}/indicator/{indicator}"
+    resp = httpx.get(url, params={"format": "json"}, timeout=TIMEOUT_STANDARD)
     resp.raise_for_status()
     payload = resp.json()
     if not isinstance(payload, list) or len(payload) < 2:
@@ -151,8 +163,8 @@ def score_hazard(country: str) -> dict[str, Any]:
         # Use the country lat/lon if available from _get_iso2_code's restcountries response.
         
         # 1. Get Lat/Lon for Capital
-        url_geo = f"https://restcountries.com/v3.1/name/{country}"
-        resp_geo = httpx.get(url_geo, timeout=5)
+        url_geo = f"{RESTCOUNTRIES_API_URL}/{country}"
+        resp_geo = httpx.get(url_geo, timeout=TIMEOUT_SHORT)
         resp_geo.raise_for_status()
         data_geo = resp_geo.json()
         if not data_geo:
@@ -165,9 +177,8 @@ def score_hazard(country: str) -> dict[str, Any]:
         start_time = (datetime.utcnow() - timedelta(days=365)).strftime("%Y-%m-%d")
         end_time = datetime.utcnow().strftime("%Y-%m-%d")
         
-        usgs_url = "https://earthquake.usgs.gov/fdsnws/event/1/count"
         resp = httpx.get(
-            usgs_url,
+            USGS_EARTHQUAKE_API_URL,
             params={
                 "format": "geojson",
                 "starttime": start_time,
@@ -177,7 +188,7 @@ def score_hazard(country: str) -> dict[str, Any]:
                 "maxradius": 2, # 2 degrees (~220km)
                 "minmagnitude": 5.5
             },
-            timeout=10
+            timeout=TIMEOUT_STANDARD
         )
         resp.raise_for_status()
         count_quakes = resp.json().get("count", 0)
@@ -221,16 +232,15 @@ def score_gold(country: str) -> dict[str, Any]:
     source = "GDELT DOC 2.0 API (gold market attention)"
     try:
         query = f'gold AND "{country}"'
-        url = "https://api.gdeltproject.org/api/v2/doc/doc"
         resp = httpx.get(
-            url,
+            GDELT_DOC_API_URL,
             params={
                 "query": query,
                 "mode": "TimelineVol",
                 "format": "json",
-                "timespan": "7d",
+                "timespan": GDELT_TIMESPAN_7D,
             },
-            timeout=15,
+            timeout=TIMEOUT_LONG,
         )
         resp.raise_for_status()
         payload = resp.json()
@@ -272,16 +282,15 @@ def score_uncertainty(country: str) -> dict[str, Any]:
     try:
         # Based on: https://www.jamelsaadaoui.com/using-the-gdelt-api-to-watch-uncertainty/
         query = f'(uncertainty OR uncertain) AND (economy OR economic OR policy OR fiscal OR budget OR regulation OR tax) AND "{country}"'
-        url = "https://api.gdeltproject.org/api/v2/doc/doc"
         resp = httpx.get(
-            url,
+            GDELT_DOC_API_URL,
             params={
                 "query": query,
                 "mode": "TimelineVol",
                 "format": "json",
-                "timespan": "30d",
+                "timespan": GDELT_TIMESPAN_30D,
             },
-            timeout=15,
+            timeout=TIMEOUT_LONG,
         )
         resp.raise_for_status()
         payload = resp.json()
@@ -322,18 +331,17 @@ def score_uncertainty(country: str) -> dict[str, Any]:
 def score_military(country: str) -> dict[str, Any]:
     source = "GDELT GEO 2.0 API (Conflict Intensity)"
     try:
-        url = "https://api.gdeltproject.org/api/v2/geo/geo"
         query = f'country:{country} theme:CONFLICT'
         
         resp = httpx.get(
-            url,
+            GDELT_GEO_API_URL,
             params={
                 "query": query,
                 "mode": "pointdata",
                 "format": "geojson",
-                "timespan": "24h"
+                "timespan": GDELT_TIMESPAN_24H
             },
-            timeout=15,
+            timeout=TIMEOUT_LONG,
         )
         
         if resp.status_code != 200:

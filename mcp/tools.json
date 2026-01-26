@@ -152,6 +152,21 @@
   {
     "type": "function",
     "function": {
+      "name": "score_uncertainty",
+      "description": "Compute economic policy uncertainty score (0-1) from a real-time source.",
+      "request": { "method": "GET", "path": "/api/score/uncertainty" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": { "type": "string" }
+        },
+        "required": ["country"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "score_overall",
       "description": "Compute overall risk score using the fixed-source factor scores.",
       "request": { "method": "GET", "path": "/api/score/overall" },

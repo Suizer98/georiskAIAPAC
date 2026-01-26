@@ -7,6 +7,8 @@ import httpx
 from langchain.tools import StructuredTool
 from pydantic import create_model
 
+from constant import CACHE_TTL_SECONDS, TIMEOUT_API
+
 
 def _type_from_json(type_name: str) -> type:
     return {
@@ -31,7 +33,6 @@ def _build_args_model(name: str, parameters: dict) -> type:
     return create_model(f"{name.title()}Args", **fields)
 
 
-_CACHE_TTL_SECONDS = 5
 _GET_CACHE: dict[str, tuple[float, Any]] = {}
 
 
@@ -55,11 +56,11 @@ def _make_tool_fn(mcp_url: str, method: str, path: str) -> Callable[..., Any]:
             if method == "GET":
                 key = _cache_key(url, kwargs)
                 cached = _GET_CACHE.get(key)
-                if cached and time.time() - cached[0] < _CACHE_TTL_SECONDS:
+                if cached and time.time() - cached[0] < CACHE_TTL_SECONDS:
                     return cached[1]
-            response = httpx.request(method, url, params=kwargs, timeout=30)
+            response = httpx.request(method, url, params=kwargs, timeout=TIMEOUT_API)
         else:
-            response = httpx.request(method, url, json=kwargs, timeout=30)
+            response = httpx.request(method, url, json=kwargs, timeout=TIMEOUT_API)
         response.raise_for_status()
         try:
             payload = response.json()
@@ -73,7 +74,7 @@ def _make_tool_fn(mcp_url: str, method: str, path: str) -> Callable[..., Any]:
 
 
 def build_tools(mcp_url: str) -> list[StructuredTool]:
-    response = httpx.get(f"{mcp_url}/api/tools", timeout=30)
+    response = httpx.get(f"{mcp_url}/api/tools", timeout=TIMEOUT_API)
     response.raise_for_status()
     tool_defs = response.json()
     tools = []

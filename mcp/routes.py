@@ -26,6 +26,7 @@ from scoring import (
     score_uncertainty,
 )
 from pricing import list_price_data
+from constant import TIMEOUT_API, HTTP_QUEUE_MAXSIZE
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -81,7 +82,7 @@ def get_risk_data(
 
 @router.get("/api/risk/events")
 async def risk_events():
-    queue: asyncio.Queue[str] = asyncio.Queue(maxsize=10)
+    queue: asyncio.Queue[str] = asyncio.Queue(maxsize=HTTP_QUEUE_MAXSIZE)
     _risk_subscribers.append(queue)
 
     async def event_generator():
@@ -222,6 +223,11 @@ def get_gold_score(country: str):
     return score_gold(country)
 
 
+@router.get("/api/score/uncertainty")
+def get_uncertainty_score(country: str):
+    return score_uncertainty(country)
+
+
 @router.get("/api/score/overall")
 def get_overall_score(country: str):
     return score_overall(country)
@@ -271,7 +277,7 @@ async def _call_tool(
         arguments = {k: v for k, v in arguments.items() if k != key}
     base_url = str(request.base_url)
     url = urljoin(base_url, url_path.lstrip("/"))
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=TIMEOUT_API) as client:
         if method in {"GET", "DELETE"}:
             response = await client.request(
                 method, url, params=arguments

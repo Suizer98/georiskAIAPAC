@@ -6,6 +6,7 @@ from models import RiskData
 # Risk formula: Risk = 25 * (Military + Hazard + (1 - Economy) + (1 - Safety))
 # Estimates based on 2025/2026 context.
 
+# Seed data for APAC cities with initial risk levels
 asia_pacific_countries = [
     {"country": "Australia", "city": "Sydney", "lat": -33.8688, "lon": 151.2093, "risk_level": 23.0},
     {"country": "Australia", "city": "Melbourne", "lat": -37.8136, "lon": 144.9631, "risk_level": 23.0},

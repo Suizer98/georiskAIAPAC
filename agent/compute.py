@@ -4,6 +4,8 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, HTTPException
 
+from constant import TIMEOUT_API
+
 router = APIRouter()
 
 
@@ -50,7 +52,7 @@ def compute_risk(payload: dict):
     response = httpx.post(
         f"{mcp_url}/api/risk",
         json=risk_payload,
-        timeout=30,
+        timeout=TIMEOUT_API,
     )
     if response.status_code >= 400:
         raise HTTPException(
