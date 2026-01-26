@@ -52,6 +52,11 @@ services:
       VITE_CESIUM_ION_TOKEN: ${VITE_CESIUM_ION_TOKEN}
       VITE_BACKEND_MCP: http://mcp:8000
       VITE_BACKEND_AGENT: http://agent:7000
+    depends_on:
+      mcp:
+        condition: service_started
+      agent:
+        condition: service_started
     volumes:
       - ./frontend:/app
       - /app/node_modules
