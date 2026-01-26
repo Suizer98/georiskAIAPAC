@@ -146,10 +146,9 @@ def score_hazard(country: str) -> dict[str, Any]:
         # Ideally we'd bound box by country, but for simplicity we rely on
         # generic "risk" or just return a general index.
         # Actually, USGS doesn't support "query by country name" easily without a bbox.
-        #
-        # ALTERNATIVE: Use Open-Meteo for a specific coordinate (Capital City).
+        # Use Open-Meteo for a specific coordinate (Capital City).
         # We need lat/lon for that.
-        # Let's use the country lat/lon if available from _get_iso2_code's restcountries response.
+        # Use the country lat/lon if available from _get_iso2_code's restcountries response.
         
         # 1. Get Lat/Lon for Capital
         url_geo = f"https://restcountries.com/v3.1/name/{country}"
@@ -268,6 +267,58 @@ def score_gold(country: str) -> dict[str, Any]:
         }
 
 
+def score_uncertainty(country: str) -> dict[str, Any]:
+    source = "GDELT DOC 2.0 API (Economic Policy Uncertainty)"
+    try:
+        # Based on: https://www.jamelsaadaoui.com/using-the-gdelt-api-to-watch-uncertainty/
+        query = f'(uncertainty OR uncertain) AND (economy OR economic OR policy OR fiscal OR budget OR regulation OR tax) AND "{country}"'
+        url = "https://api.gdeltproject.org/api/v2/doc/doc"
+        resp = httpx.get(
+            url,
+            params={
+                "query": query,
+                "mode": "TimelineVol",
+                "format": "json",
+                "timespan": "30d",
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+        timeline = payload.get("timeline", [])
+        total_mentions = sum(
+            float(row.get("value", 0)) for row in timeline if row
+        )
+
+        # Higher mentions = higher uncertainty = higher risk score
+        uncertainty_score = _score_from_thresholds(
+            total_mentions,
+            [
+                (0, 0.1),
+                (10, 0.3),
+                (50, 0.5),
+                (100, 0.7),
+                (500, 0.85),
+                (10_000, 0.95),
+            ],
+        )
+        return {
+            "score": _clamp(uncertainty_score),
+            "value": total_mentions,
+            "source": source,
+            "retrieved_at": datetime.utcnow().isoformat() + "Z",
+        }
+    except Exception as exc:
+        logger.warning(f"Error in score_uncertainty: {exc}")
+        return {
+            "score": 0.5,
+            "value": None,
+            "source": source,
+            "error": str(exc),
+            "retrieved_at": datetime.utcnow().isoformat() + "Z",
+        }
+
+
 def score_military(country: str) -> dict[str, Any]:
     source = "GDELT GEO 2.0 API (Conflict Intensity)"
     try:
@@ -343,19 +394,21 @@ def score_overall(country: str) -> dict[str, Any]:
     hazard = score_hazard(country)
     military = score_military(country)
     gold = score_gold(country)
+    uncertainty = score_uncertainty(country)
     
     errors = [
         component["error"]
-        for component in (economy, safety, hazard, military, gold)
+        for component in (economy, safety, hazard, military, gold, uncertainty)
         if component.get("error")
     ]
     
     risk = (
-        (25.0 * military["score"])
-        + (10.0 * hazard["score"])
-        + (25.0 * (1.0 - economy["score"]))
-        + (25.0 * (1.0 - safety["score"]))
-        + (15.0 * gold["score"])
+        (20.0 * military["score"])
+        + (15.0 * hazard["score"])
+        + (20.0 * (1.0 - economy["score"]))
+        + (20.0 * (1.0 - safety["score"]))
+        + (10.0 * gold["score"])
+        + (15.0 * uncertainty["score"])
     )
     return {
         "risk_level": round(_clamp(risk / 100.0) * 100.0, 2),
@@ -365,8 +418,9 @@ def score_overall(country: str) -> dict[str, Any]:
             "safety": safety,
             "hazard": hazard,
             "gold": gold,
+            "uncertainty": uncertainty,
         },
         "errors": errors,
         "retrieved_at": datetime.utcnow().isoformat() + "Z",
-        "formula": "25*military + 10*hazard + 25*(1-economy) + 25*(1-safety) + 15*gold",
+        "formula": "20*military + 15*hazard + 20*(1-economy) + 20*(1-safety) + 10*gold + 15*uncertainty",
     }

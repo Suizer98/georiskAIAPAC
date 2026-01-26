@@ -23,6 +23,7 @@ from scoring import (
     score_military,
     score_overall,
     score_safety,
+    score_uncertainty,
 )
 from pricing import list_price_data
 
