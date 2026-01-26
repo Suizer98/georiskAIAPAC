@@ -10,15 +10,23 @@ export default function TopBar() {
   const location = useLocation()
   const riskLoading = useRiskStore((state) => state.loading)
   const riskData = useRiskStore((state) => state.data)
+  const riskError = useRiskStore((state) => state.error)
   const priceLoading = usePriceStore((state) => state.loading)
   const priceData = usePriceStore((state) => state.data)
+  const priceError = usePriceStore((state) => state.error)
   
   const isRiskActive = location.pathname.startsWith('/risk')
   const isPriceActive = location.pathname.startsWith('/price')
-  const isLoading = (isRiskActive && riskLoading) || (isPriceActive && priceLoading)
+  
+  // Show loading if:
+  // 1. Actively loading, OR
+  // 2. Data is empty and no error (initial load state)
+  const riskNeedsLoading = riskLoading || (riskData.length === 0 && !riskError)
+  const priceNeedsLoading = priceLoading || (priceData.length === 0 && !priceError)
+  const isLoading = (isRiskActive && riskNeedsLoading) || (isPriceActive && priceNeedsLoading)
 
   // Debug: uncomment to check loading states
-  // console.log('TopBar loading states:', { isRiskActive, isPriceActive, riskLoading, priceLoading, isLoading })
+  // console.log('TopBar loading states:', { isRiskActive, isPriceActive, riskLoading, priceLoading, riskData: riskData.length, priceData: priceData.length, isLoading })
 
   return (
     <header className="fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur">
