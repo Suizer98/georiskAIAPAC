@@ -38,12 +38,30 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
   useRiskLayer(viewerRef, riskData, riskLayerEnabled, handleSelect)
   usePriceLayer(viewerRef, priceData, priceLayerEnabled, handleSelect)
 
+  // Initial fetch on mount
   useEffect(() => {
     const controller = new AbortController()
     fetchRisk(controller.signal)
     fetchPrices(controller.signal)
     return () => controller.abort()
   }, [fetchRisk, fetchPrices])
+
+  // Refetch when layer becomes enabled
+  useEffect(() => {
+    const controller = new AbortController()
+    if (riskLayerEnabled) {
+      fetchRisk(controller.signal)
+    }
+    return () => controller.abort()
+  }, [riskLayerEnabled, fetchRisk])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    if (priceLayerEnabled) {
+      fetchPrices(controller.signal)
+    }
+    return () => controller.abort()
+  }, [priceLayerEnabled, fetchPrices])
 
   useEffect(() => {
     popupRef.current = popupData

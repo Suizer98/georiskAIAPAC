@@ -1,10 +1,24 @@
 import { ChatBubbleIcon } from '@radix-ui/react-icons'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useChatStore } from '../../store/chatStore'
+import { useRiskStore } from '../../store/riskStore'
+import { usePriceStore } from '../../store/priceStore'
 
 export default function TopBar() {
   const drawerOpened = useChatStore((state) => state.drawerOpened)
   const toggleDrawer = useChatStore((state) => state.toggleDrawer)
+  const location = useLocation()
+  const riskLoading = useRiskStore((state) => state.loading)
+  const riskData = useRiskStore((state) => state.data)
+  const priceLoading = usePriceStore((state) => state.loading)
+  const priceData = usePriceStore((state) => state.data)
+  
+  const isRiskActive = location.pathname.startsWith('/risk')
+  const isPriceActive = location.pathname.startsWith('/price')
+  const isLoading = (isRiskActive && riskLoading) || (isPriceActive && priceLoading)
+
+  // Debug: uncomment to check loading states
+  // console.log('TopBar loading states:', { isRiskActive, isPriceActive, riskLoading, priceLoading, isLoading })
 
   return (
     <header className="fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur">
@@ -52,6 +66,30 @@ export default function TopBar() {
           </NavLink>
         </nav>
       </div>
+      {isLoading && (
+        <div className="relative h-0.5 w-full overflow-hidden bg-slate-800/50">
+          <div 
+            className={`absolute left-0 top-0 h-full w-1/3 ${
+              isRiskActive 
+                ? 'bg-indigo-400/60' 
+                : 'bg-amber-400/60'
+            }`}
+            style={{
+              animation: 'shimmer 1.5s ease-in-out infinite',
+            }}
+          />
+        </div>
+      )}
+      <style>{`
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(400%);
+          }
+        }
+      `}</style>
     </header>
   )
 }
