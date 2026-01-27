@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useChatStore } from '../../store/chatStore'
 import { useRiskStore } from '../../store/riskStore'
 import { usePriceStore } from '../../store/priceStore'
+import Clock from './Clock'
 
 export default function TopBar() {
   const drawerOpened = useChatStore((state) => state.drawerOpened)
@@ -47,7 +48,7 @@ export default function TopBar() {
             Regional risk overview with 3D context.
           </p>
         </div>
-        <nav className="flex items-center gap-2">
+        <nav className="flex items-center gap-4">
           <NavLink
             to="/risk"
             className={({ isActive }) =>
@@ -72,6 +73,9 @@ export default function TopBar() {
           >
             Price
           </NavLink>
+          <div className="border-l border-white/10 pl-4">
+            <Clock />
+          </div>
         </nav>
       </div>
       {isLoading && (
