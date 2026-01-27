@@ -19,4 +19,4 @@ COPY . .
 
 ENV PATH="/opt/venv/bin:$PATH"
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7000", "--reload"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7000", "--reload", "--reload-delay", "0.5", "--reload-include", "*.py"]
