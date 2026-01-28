@@ -144,11 +144,8 @@ export const useArcGISTravelAdvisoryLayer = (
       if (currentView && !currentView.destroyed && graphicsLayerRef.current) {
         try {
           currentView.map.remove(graphicsLayerRef.current)
-        } catch (error) {
-          console.warn(
-            'Failed to remove travel advisory graphics layer:',
-            error
-          )
+        } catch {
+          // ignore cleanup errors
         }
       }
       graphicsLayerRef.current = null
@@ -224,20 +221,17 @@ export const useArcGISTravelAdvisoryLayer = (
       let successCount = 0
       let errorCount = 0
 
-      // Fetch the world GeoJSON file once
+      // CDN (GitHub raw often fails: ERR_CONNECTION_RESET)
+      // 'https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson'
+      const worldGeoJsonUrl =
+        'https://cdn.jsdelivr.net/gh/datasets/geo-countries@main/data/countries.geojson'
+
       let worldGeoJson: any = null
       try {
-        const worldGeoJsonUrl =
-          'https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson'
         const worldResponse = await fetch(worldGeoJsonUrl)
-        if (!worldResponse.ok) {
-          throw new Error(
-            `Failed to fetch world GeoJSON: ${worldResponse.status}`
-          )
-        }
+        if (!worldResponse.ok) return
         worldGeoJson = await worldResponse.json()
-      } catch (error) {
-        console.error('Failed to load world GeoJSON:', error)
+      } catch {
         return
       }
 
@@ -246,32 +240,38 @@ export const useArcGISTravelAdvisoryLayer = (
         worldGeoJson.type !== 'FeatureCollection' ||
         !Array.isArray(worldGeoJson.features)
       ) {
-        console.error('Invalid world GeoJSON format')
         return
       }
 
       // Process each travel advisory item
       for (const item of travelAdvisoryData) {
-        if (!item.country) {
-          console.warn('Skipping item with no country')
-          continue
-        }
+        if (!item.country) continue
 
         try {
           const iso3 = countryToISO3[item.country]
           if (!iso3) {
-            console.warn(`No ISO3 code found for ${item.country}`)
             errorCount++
             continue
           }
 
           // Find matching country in world GeoJSON
+          const iso2 = countryToISO2[item.country]
           const countryFeature = worldGeoJson.features.find((feature: any) => {
             // Match by ISO3 code (id field) - check both string and number
             if (
               feature.id === iso3 ||
               feature.id === iso3.toLowerCase() ||
               String(feature.id) === iso3
+            ) {
+              return true
+            }
+
+            // Match by ISO2 code in id (some sources like johan/world.geo.json use alpha-2 in id)
+            if (
+              iso2 &&
+              (feature.id === iso2 ||
+                feature.id === iso2.toLowerCase() ||
+                String(feature.id) === iso2)
             ) {
               return true
             }
@@ -291,7 +291,6 @@ export const useArcGISTravelAdvisoryLayer = (
             }
 
             // Match by ISO2 code in properties (fallback)
-            const iso2 = countryToISO2[item.country]
             if (
               iso2 &&
               (props.iso_a2 === iso2 ||
@@ -333,9 +332,6 @@ export const useArcGISTravelAdvisoryLayer = (
           })
 
           if (!countryFeature) {
-            console.warn(
-              `Country feature not found in GeoJSON for ${item.country} (${iso3})`
-            )
             errorCount++
             continue
           }
@@ -348,8 +344,7 @@ export const useArcGISTravelAdvisoryLayer = (
 
           await renderCountryGeometry(countryGeoJson, item, graphicsLayer)
           successCount++
-        } catch (error) {
-          console.warn(`Failed to process boundary for ${item.country}:`, error)
+        } catch {
           errorCount++
         }
       }
@@ -448,10 +443,6 @@ export const useArcGISTravelAdvisoryLayer = (
                 graphicsLayer.graphics.length - 1
               )
             )
-          } else {
-            console.warn(
-              `Unsupported geometry type: ${geometry.type} for ${item.country}`
-            )
           }
         }
       } else if (geoJson.type === 'Feature' && geoJson.geometry) {
@@ -524,8 +515,8 @@ export const useArcGISTravelAdvisoryLayer = (
           )
         }
       }
-    } catch (error) {
-      console.warn(`Failed to render geometry for ${item.country}:`, error)
+    } catch {
+      // skip failed geometry
     }
   }
 }
