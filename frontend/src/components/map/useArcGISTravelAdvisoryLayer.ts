@@ -213,23 +213,10 @@ export const useArcGISTravelAdvisoryLayer = (
       let successCount = 0
       let errorCount = 0
 
-      // Country name variations for matching
-      const countryNameVariations: Record<string, string[]> = {
-        'China': ['China', 'People\'s Republic of China', 'People\'s Republic of China', 'PRC', 'People\'s Republic of China'],
-        'South Korea': ['South Korea', 'Korea', 'Republic of Korea', 'Korea, Republic of', 'Korea (South)'],
-        'Hong Kong': ['Hong Kong', 'Hong Kong SAR', 'Hong Kong Special Administrative Region', 'Hong Kong S.A.R.', 'Hong Kong, China', 'Hong Kong Island'],
-        'Singapore': ['Singapore', 'Republic of Singapore', 'Singapura'],
-        'Myanmar': ['Myanmar', 'Burma', 'Myanmar (Burma)', 'Myanmar, Burma'],
-        'Brunei': ['Brunei', 'Brunei Darussalam', 'Brunei Darussalam'],
-        'Laos': ['Laos', 'Lao People\'s Democratic Republic', 'Lao PDR', 'Lao People\'s Democratic Republic'],
-        'Taiwan': ['Taiwan', 'Taiwan, Province of China', 'Republic of China', 'Taiwan, China'],
-        'Vietnam': ['Vietnam', 'Viet Nam', 'Socialist Republic of Vietnam'],
-      }
-
       // Fetch the world GeoJSON file once
       let worldGeoJson: any = null
       try {
-        const worldGeoJsonUrl = 'https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json'
+        const worldGeoJsonUrl = 'https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson'
         console.debug('Fetching world GeoJSON from:', worldGeoJsonUrl)
         const worldResponse = await fetch(worldGeoJsonUrl)
         if (!worldResponse.ok) {
@@ -272,14 +259,16 @@ export const useArcGISTravelAdvisoryLayer = (
             // Match by ISO3 code in properties
             const props = feature.properties || {}
             if (props.iso_a3 === iso3 || props.ISO_A3 === iso3 || props.ISO3 === iso3 || 
-                props.iso3 === iso3 || props.ISO_A3_EH === iso3) {
+                props.iso3 === iso3 || props.ISO_A3_EH === iso3 ||
+                props['ISO3166-1-Alpha-3'] === iso3 || props['iso3166-1-alpha-3'] === iso3) {
               return true
             }
             
             // Match by ISO2 code in properties (fallback)
             const iso2 = countryToISO2[item.country]
             if (iso2 && (props.iso_a2 === iso2 || props.ISO_A2 === iso2 || props.ISO2 === iso2 || 
-                         props.iso2 === iso2 || props.ISO_A2_EH === iso2)) {
+                         props.iso2 === iso2 || props.ISO_A2_EH === iso2 ||
+                         props['ISO3166-1-Alpha-2'] === iso2 || props['iso3166-1-alpha-2'] === iso2)) {
               return true
             }
             
@@ -291,42 +280,9 @@ export const useArcGISTravelAdvisoryLayer = (
               const name = props[field] || ''
               const nameLower = name.toLowerCase()
               
-              // Check exact match
+              // Check exact match only
               if (nameLower === countryLower) {
                 return true
-              }
-              
-              // Check if name contains the country name (for cases like "Hong Kong, China")
-              if (nameLower.includes(countryLower) || countryLower.includes(nameLower)) {
-                // Additional check to avoid false positives
-                if (item.country === 'Hong Kong' && nameLower.includes('hong kong')) {
-                  return true
-                }
-                if (item.country === 'Singapore' && nameLower.includes('singapore')) {
-                  return true
-                }
-              }
-            }
-            
-            // Check variations
-            const variations = countryNameVariations[item.country] || []
-            for (const variant of variations) {
-              const variantLower = variant.toLowerCase()
-              for (const field of nameFields) {
-                const name = props[field] || ''
-                const nameLower = name.toLowerCase()
-                if (nameLower === variantLower) {
-                  return true
-                }
-                // Check if name contains the variation
-                if (nameLower.includes(variantLower) || variantLower.includes(nameLower)) {
-                  if (item.country === 'Hong Kong' && variantLower.includes('hong kong')) {
-                    return true
-                  }
-                  if (item.country === 'Singapore' && variantLower.includes('singapore')) {
-                    return true
-                  }
-                }
               }
             }
             
