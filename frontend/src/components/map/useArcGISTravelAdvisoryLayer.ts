@@ -58,7 +58,6 @@ export const useArcGISTravelAdvisoryLayer = (
     // Move to bottom of layer stack
     view.map.reorder(graphicsLayer, 0)
     graphicsLayerRef.current = graphicsLayer
-    console.debug('Travel Advisory layer created and added to map')
 
     // Setup hover handler to show popup
     if (onSelect) {
@@ -209,7 +208,6 @@ export const useArcGISTravelAdvisoryLayer = (
         'Vietnam': 'VN',
       }
 
-      console.debug(`Processing ${travelAdvisoryData.length} travel advisory items`)
       let successCount = 0
       let errorCount = 0
 
@@ -217,13 +215,11 @@ export const useArcGISTravelAdvisoryLayer = (
       let worldGeoJson: any = null
       try {
         const worldGeoJsonUrl = 'https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson'
-        console.debug('Fetching world GeoJSON from:', worldGeoJsonUrl)
         const worldResponse = await fetch(worldGeoJsonUrl)
         if (!worldResponse.ok) {
           throw new Error(`Failed to fetch world GeoJSON: ${worldResponse.status}`)
         }
         worldGeoJson = await worldResponse.json()
-        console.debug('Loaded world GeoJSON:', worldGeoJson.type, worldGeoJson.features?.length || 'no features')
       } catch (error) {
         console.error('Failed to load world GeoJSON:', error)
         return
@@ -290,36 +286,10 @@ export const useArcGISTravelAdvisoryLayer = (
           })
 
           if (!countryFeature) {
-            // Enhanced debugging for Hong Kong and Singapore
-            if (item.country === 'Hong Kong' || item.country === 'Singapore') {
-              console.warn(`Country feature not found in GeoJSON for ${item.country} (${iso3})`)
-              // Log available features with similar names for debugging
-              const similarFeatures = worldGeoJson.features.filter((f: any) => {
-                const props = f.properties || {}
-                const name = (props.name || props.NAME || props.NAME_LONG || '').toLowerCase()
-                const id = String(f.id || '').toLowerCase()
-                return name.includes(item.country.toLowerCase()) || 
-                       id.includes(iso3.toLowerCase()) ||
-                       (item.country === 'Hong Kong' && (name.includes('hong') || id.includes('hk'))) ||
-                       (item.country === 'Singapore' && (name.includes('sing') || id.includes('sg')))
-              })
-              if (similarFeatures.length > 0) {
-                console.debug(`Found ${similarFeatures.length} similar features:`, 
-                  similarFeatures.slice(0, 3).map((f: any) => ({
-                    id: f.id,
-                    name: f.properties?.name || f.properties?.NAME || f.properties?.NAME_LONG,
-                    iso_a3: f.properties?.iso_a3 || f.properties?.ISO_A3
-                  }))
-                )
-              }
-            } else {
-              console.warn(`Country feature not found in GeoJSON for ${item.country} (${iso3})`)
-            }
+            console.warn(`Country feature not found in GeoJSON for ${item.country} (${iso3})`)
             errorCount++
             continue
           }
-
-          console.debug(`Found GeoJSON feature for ${item.country}:`, countryFeature.properties?.name || countryFeature.id)
           
           // Create a FeatureCollection with just this country
           const countryGeoJson = {
@@ -335,17 +305,10 @@ export const useArcGISTravelAdvisoryLayer = (
           errorCount++
         }
       }
-      
-      console.debug(`Travel advisory layer: ${successCount} countries loaded, ${errorCount} errors, total graphics: ${graphicsLayer.graphics.length}`)
     }
 
-    if (enabled) {
-      if (travelAdvisoryData.length > 0) {
-        console.debug(`Loading ${travelAdvisoryData.length} travel advisory countries`)
-        loadCountryBoundaries()
-      } else {
-        console.debug('Travel advisory data is empty, waiting for data...')
-      }
+    if (enabled && travelAdvisoryData.length > 0) {
+      loadCountryBoundaries()
     }
   }, [travelAdvisoryData, enabled, viewRef])
 
@@ -359,12 +322,8 @@ export const useArcGISTravelAdvisoryLayer = (
       const color = getLevelColor(level)
       const alpha = level === null ? 0.1 : 0.4
 
-      console.debug(`Rendering geometry for ${item.country}, level: ${level}, color: ${color}`)
-
       // Convert GeoJSON to ArcGIS geometry
-      // geoBoundaries returns a FeatureCollection
       if (geoJson.type === 'FeatureCollection' && Array.isArray(geoJson.features)) {
-        console.debug(`Processing FeatureCollection with ${geoJson.features.length} features`)
         for (const feature of geoJson.features) {
           if (!feature.geometry) continue
           
@@ -397,10 +356,8 @@ export const useArcGISTravelAdvisoryLayer = (
 
             graphicsLayer.add(graphic)
             countryGraphicsRef.current.set(item.country, graphic)
-            console.debug(`Added Polygon graphic for ${item.country}`)
           } else if (geometry.type === 'MultiPolygon') {
             // MultiPolygon: coordinates is an array of polygons
-            console.debug(`Processing MultiPolygon with ${geometry.coordinates.length} polygons for ${item.country}`)
             for (const polygonCoords of geometry.coordinates) {
               const outerRing = polygonCoords[0].map((coord: number[]) => [coord[0], coord[1]])
               const polygon = new Polygon({
@@ -429,12 +386,10 @@ export const useArcGISTravelAdvisoryLayer = (
               graphicsLayer.add(graphic)
             }
             countryGraphicsRef.current.set(item.country, graphicsLayer.graphics.getItemAt(graphicsLayer.graphics.length - 1))
-            console.debug(`Added ${geometry.coordinates.length} MultiPolygon graphics for ${item.country}`)
           } else {
             console.warn(`Unsupported geometry type: ${geometry.type} for ${item.country}`)
           }
         }
-        console.debug(`Total graphics in layer after ${item.country}: ${graphicsLayer.graphics.length}`)
       } else if (geoJson.type === 'Feature' && geoJson.geometry) {
         // Handle single feature
         const geometry = geoJson.geometry

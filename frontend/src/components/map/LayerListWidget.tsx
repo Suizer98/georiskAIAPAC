@@ -3,6 +3,10 @@ import { LayersIcon, Cross2Icon } from '@radix-ui/react-icons'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { useLocation } from 'react-router-dom'
 import { useLayerStore } from '../../store/layerStore'
+import { useRiskStore } from '../../store/riskStore'
+import { usePriceStore } from '../../store/priceStore'
+import { useJPMorganStore } from '../../store/jpmorganStore'
+import { useTravelAdvisoryStore } from '../../store/travelAdvisoryStore'
 
 type LegendItem = {
   id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory'
@@ -17,6 +21,37 @@ export default function LayerListWidget() {
   const location = useLocation()
   const layers = useLayerStore((state) => state.layers)
   const toggleLayer = useLayerStore((state) => state.toggleLayer)
+  
+  // Get loading states and data from stores
+  const riskLoading = useRiskStore((state) => state.loading)
+  const riskData = useRiskStore((state) => state.data)
+  const priceLoading = usePriceStore((state) => state.loading)
+  const priceData = usePriceStore((state) => state.data)
+  const jpmorganLoading = useJPMorganStore((state) => state.loading)
+  const jpmorganData = useJPMorganStore((state) => state.data)
+  const travelAdvisoryLoading = useTravelAdvisoryStore((state) => state.loading)
+  const travelAdvisoryData = useTravelAdvisoryStore((state) => state.data)
+  
+  // Map layer IDs to their loading states
+  // A layer is considered loading if:
+  // 1. It's actively loading, OR
+  // 2. It's enabled but has no data yet (initial load state)
+  const getLayerLoading = (id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory') => {
+    const isEnabled = layers.find((layer) => layer.id === id)?.enabled ?? false
+    
+    switch (id) {
+      case 'risk':
+        return riskLoading || (isEnabled && riskData.length === 0)
+      case 'price':
+        return priceLoading || (isEnabled && priceData.length === 0)
+      case 'jpmorgan':
+        return jpmorganLoading || (isEnabled && jpmorganData.length === 0)
+      case 'travel_advisory':
+        return travelAdvisoryLoading || (isEnabled && travelAdvisoryData.length === 0)
+      default:
+        return false
+    }
+  }
 
   // Determine which legend items to show based on route
   const legendItems = useMemo<LegendItem[]>(() => {
@@ -115,10 +150,13 @@ export default function LayerListWidget() {
           <div className="px-3 py-2 space-y-2">
             {legendItems.map((item) => {
               const isVisible = getLayerVisibility(item.id)
+              const isLoading = getLayerLoading(item.id)
               return (
                 <div
                   key={item.id}
-                  className="flex items-center gap-2 text-sm text-white/90"
+                  className={`flex items-center gap-2 text-sm transition-opacity ${
+                    isLoading ? 'opacity-40' : 'opacity-100'
+                  }`}
                 >
                   {/* Legend Icon */}
                   <div
@@ -129,15 +167,24 @@ export default function LayerListWidget() {
                     }}
                   />
                   {/* Layer Name */}
-                  <span className="flex-1 text-xs">{item.displayName}</span>
+                  <span className={`flex-1 text-xs ${isLoading ? 'text-white/50' : 'text-white/90'}`}>
+                    {item.displayName}
+                  </span>
                   {/* Visibility Toggle Button */}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
-                      toggleLayer(item.id)
+                      if (!isLoading) {
+                        toggleLayer(item.id)
+                      }
                     }}
-                    className="flex h-6 w-6 items-center justify-center rounded hover:bg-white/10 text-white/60 hover:text-white/80 transition-colors"
+                    disabled={isLoading}
+                    className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+                      isLoading
+                        ? 'cursor-not-allowed opacity-40'
+                        : 'hover:bg-white/10 text-white/60 hover:text-white/80'
+                    }`}
                     aria-label={isVisible ? `Hide ${item.displayName}` : `Show ${item.displayName}`}
                   >
                     {isVisible ? (

@@ -150,24 +150,6 @@ export const useArcGISPriceLayer = (
         return
       }
 
-      const goldUsd =
-        typeof item.gold_usd === 'number'
-          ? `$${item.gold_usd.toFixed(2)}`
-          : 'N/A'
-      const silverUsd =
-        typeof item.silver_usd === 'number'
-          ? `$${item.silver_usd.toFixed(2)}`
-          : 'N/A'
-      const localCode = item.currency ?? 'LOCAL'
-      const goldLocal =
-        typeof item.gold_local === 'number'
-          ? `${localCode} ${item.gold_local.toFixed(2)}`
-          : 'N/A'
-      const silverLocal =
-        typeof item.silver_local === 'number'
-          ? `${localCode} ${item.silver_local.toFixed(2)}`
-          : 'N/A'
-
       // Create point
       const point = new Point({
         longitude: item.longitude,

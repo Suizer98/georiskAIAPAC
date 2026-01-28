@@ -3,8 +3,8 @@ import logging
 from db import Base, SessionLocal, engine
 from models import RiskData
 
-# Risk formula: Risk = 25 * (Military + Hazard + (1 - Economy) + (1 - Safety))
-# Estimates based on 2025/2026 context.
+# Seed data for APAC cities with initial risk levels
+# Note: Actual risk calculation uses: 25*military + 25*(1-economy) + 25*(1-safety) + 15*uncertainty + 10*ambassy_advice
 
 # Seed data for APAC cities with initial risk levels
 asia_pacific_countries = [

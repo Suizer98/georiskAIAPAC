@@ -35,9 +35,6 @@ export default function TopBar() {
   const travelAdvisoryNeedsLoading = travelAdvisoryLoading || (travelAdvisoryData.length === 0 && !travelAdvisoryError)
   const isLoading = (activeTab === 'risk' && (riskNeedsLoading || travelAdvisoryNeedsLoading)) || (activeTab === 'price' && priceNeedsLoading)
 
-  // Debug: uncomment to check loading states
-  // console.log('TopBar loading states:', { isRiskActive, isPriceActive, riskLoading, priceLoading, riskData: riskData.length, priceData: priceData.length, isLoading })
-
   return (
     <header className="fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur">
       <div className="flex w-full items-center gap-4 px-6 py-4 text-white">
