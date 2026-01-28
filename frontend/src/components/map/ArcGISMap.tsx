@@ -3,11 +3,14 @@ import '@arcgis/core/assets/esri/themes/dark/main.css'
 import { useRiskStore } from '../../store/riskStore'
 import { usePriceStore } from '../../store/priceStore'
 import { useJPMorganStore } from '../../store/jpmorganStore'
+import { useTravelAdvisoryStore } from '../../store/travelAdvisoryStore'
 import { useLayerStore } from '../../store/layerStore'
 import { useArcGISViewer } from './useArcGISViewer'
 import { useArcGISRiskLayer } from './useArcGISRiskLayer'
 import { useArcGISPriceLayer } from './useArcGISPriceLayer'
 import { useArcGISJPMorganLayer } from './useArcGISJPMorganLayer'
+import { useArcGISTravelAdvisoryLayer } from './useArcGISTravelAdvisoryLayer'
+import { useLocation } from 'react-router-dom'
 import LayerListWidget from './LayerListWidget'
 import MapPopup, { type MapPopupSelection } from './MapPopup'
 
@@ -28,8 +31,16 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
   const fetchPrices = usePriceStore((state) => state.fetchPrices)
   const jpmorganData = useJPMorganStore((state) => state.data)
   const fetchJPMorgan = useJPMorganStore((state) => state.fetchOffices)
+  const travelAdvisoryData = useTravelAdvisoryStore((state) => state.data)
+  const fetchTravelAdvisories = useTravelAdvisoryStore((state) => state.fetchTravelAdvisories)
+  const location = useLocation()
+  const isRiskRoute = location.pathname.startsWith('/risk')
+  
   const riskLayerEnabled = useLayerStore(
     (state) => state.layers.find((layer) => layer.id === 'risk')?.enabled ?? true
+  )
+  const travelAdvisoryLayerEnabled = useLayerStore(
+    (state) => state.layers.find((layer) => layer.id === 'travel_advisory')?.enabled ?? true
   )
   const priceLayerEnabled = useLayerStore(
     (state) =>
@@ -47,6 +58,12 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
   useArcGISRiskLayer(viewRef, riskData, riskLayerEnabled, handleSelect)
   useArcGISPriceLayer(viewRef, priceData, priceLayerEnabled, handleSelect)
   useArcGISJPMorganLayer(viewRef, jpmorganData, jpmorganLayerEnabled, handleSelect)
+  useArcGISTravelAdvisoryLayer(
+    viewRef,
+    travelAdvisoryData,
+    isRiskRoute && travelAdvisoryLayerEnabled,
+    handleSelect
+  )
 
   // Initial fetch on mount
   useEffect(() => {
@@ -54,8 +71,11 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
     fetchRisk(controller.signal)
     fetchPrices(controller.signal)
     fetchJPMorgan(controller.signal)
+    if (isRiskRoute) {
+      fetchTravelAdvisories(controller.signal)
+    }
     return () => controller.abort()
-  }, [fetchRisk, fetchPrices, fetchJPMorgan])
+  }, [fetchRisk, fetchPrices, fetchJPMorgan, fetchTravelAdvisories, isRiskRoute])
 
   // Refetch when layer becomes enabled
   useEffect(() => {
@@ -81,6 +101,14 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
     }
     return () => controller.abort()
   }, [jpmorganLayerEnabled, fetchJPMorgan])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    if (isRiskRoute && travelAdvisoryLayerEnabled) {
+      fetchTravelAdvisories(controller.signal)
+    }
+    return () => controller.abort()
+  }, [isRiskRoute, travelAdvisoryLayerEnabled, fetchTravelAdvisories])
 
   useEffect(() => {
     popupRef.current = popupData

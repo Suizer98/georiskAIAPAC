@@ -122,39 +122,24 @@
   {
     "type": "function",
     "function": {
-      "name": "score_hazard",
-      "description": "Compute hazard score (0-1) from a fixed source.",
-      "request": { "method": "GET", "path": "/api/score/hazard" },
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "country": { "type": "string" }
-        },
-        "required": ["country"]
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
-      "name": "score_gold",
-      "description": "Compute gold market attention score (0-1) from a real-time source.",
-      "request": { "method": "GET", "path": "/api/score/gold" },
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "country": { "type": "string" }
-        },
-        "required": ["country"]
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
       "name": "score_uncertainty",
       "description": "Compute economic policy uncertainty score (0-1) from a real-time source.",
       "request": { "method": "GET", "path": "/api/score/uncertainty" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "country": { "type": "string" }
+        },
+        "required": ["country"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "score_ambassy_advice",
+      "description": "Compute US State Department travel advisory score (0-1) based on travel advisory level (Level 1-4).",
+      "request": { "method": "GET", "path": "/api/score/ambassy_advice" },
       "parameters": {
         "type": "object",
         "properties": {

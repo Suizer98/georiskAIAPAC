@@ -116,30 +116,10 @@ export const useJPMorganStore = create<JPMorganState>((set) => ({
   data: [],
   loading: false,
   error: null,
-  fetchOffices: async (signal) => {
+  fetchOffices: async (_signal?: AbortSignal) => {
     set({ loading: true, error: null })
     try {
-      // Try to fetch from API first, fallback to hardcoded data
-      try {
-        const response = await fetch('/api/jpmorgan', { signal })
-        if (response.ok) {
-          const payload = await response.json()
-          const items = Array.isArray(payload?.items)
-            ? payload.items
-            : Array.isArray(payload)
-              ? payload
-              : []
-          if (items.length > 0) {
-            set({ data: items })
-            return
-          }
-        }
-      } catch (apiError) {
-        // API not available, use hardcoded data
-        console.warn('JP Morgan API not available, using hardcoded data:', apiError)
-      }
-      
-      // Fallback to hardcoded data
+      // Use hardcoded data directly (no API call needed)
       set({ data: APAC_OFFICES })
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {

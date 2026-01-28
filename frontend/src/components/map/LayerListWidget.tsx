@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom'
 import { useLayerStore } from '../../store/layerStore'
 
 type LegendItem = {
-  id: 'risk' | 'jpmorgan' | 'price'
+  id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory'
   displayName: string
   layerTitle: string
   iconColor: string
@@ -37,6 +37,13 @@ export default function LayerListWidget() {
     // Risk route
     return [
       {
+        id: 'travel_advisory',
+        displayName: 'Travel Advisory Levels',
+        layerTitle: 'Travel Advisory Levels',
+        iconColor: '#6b7280', // Gray default, will vary by level
+        iconBorderColor: 'rgba(255, 255, 255, 0.3)',
+      },
+      {
         id: 'jpmorgan',
         displayName: 'JP Morgan Offices',
         layerTitle: 'JP Morgan Offices',
@@ -54,7 +61,7 @@ export default function LayerListWidget() {
   }, [location.pathname])
 
   // Get layer visibility state
-  const getLayerVisibility = (id: 'risk' | 'jpmorgan' | 'price') => {
+  const getLayerVisibility = (id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory') => {
     return layers.find((layer) => layer.id === id)?.enabled ?? false
   }
 

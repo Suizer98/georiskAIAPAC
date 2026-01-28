@@ -4,11 +4,13 @@ import * as Popover from '@radix-ui/react-popover'
 import type { PriceItem } from '../../store/priceStore'
 import type { RiskItem } from '../../store/riskStore'
 import type { JPMorganOffice } from '../../store/jpmorganStore'
+import type { TravelAdvisoryItem } from '../../store/travelAdvisoryStore'
 
 export type MapPopupPayload =
   | { type: 'price'; item: PriceItem }
   | { type: 'risk'; item: RiskItem }
   | { type: 'jpmorgan'; office: JPMorganOffice }
+  | { type: 'travel_advisory'; item: TravelAdvisoryItem }
 
 export type MapPopupSelection = {
   x: number
@@ -151,14 +153,62 @@ const JPMorganPopupContent = ({ office }: { office: JPMorganOffice }) => {
   )
 }
 
+const TravelAdvisoryPopupContent = ({ item }: { item: TravelAdvisoryItem }) => {
+  const level = item.level
+  const levelDescriptions: Record<number, string> = {
+    1: 'Exercise Normal Precautions',
+    2: 'Exercise Increased Caution',
+    3: 'Reconsider Travel',
+    4: 'Do Not Travel',
+  }
+  const levelDescription = level ? levelDescriptions[level] : 'No Data'
+  const levelColor = level === 1 ? '#22c55e' : level === 2 ? '#eab308' : level === 3 ? '#f97316' : level === 4 ? '#ef4444' : '#6b7280'
+
+  return (
+    <div className="space-y-2">
+      <div className="text-lg font-bold">Travel Advisory</div>
+      <div className="space-y-1 text-sm">
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-400">Country</span>
+          <span className="font-mono text-gray-200">{item.country}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-400">Advisory Level</span>
+          <span
+            className="font-mono font-bold"
+            style={{ color: levelColor }}
+          >
+            {level ? `Level ${level}` : 'N/A'}
+          </span>
+        </div>
+        {level && (
+          <div className="text-xs text-gray-400 italic">
+            {levelDescription}
+          </div>
+        )}
+        {item.error && (
+          <div className="text-xs text-yellow-400">{item.error}</div>
+        )}
+      </div>
+      {item.retrieved_at && (
+        <div className="mt-2 text-xs text-gray-500">
+          Updated: {new Date(item.retrieved_at).toLocaleString()}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MapPopup({ x, y, payload, onClose }: MapPopupProps) {
   const content =
     payload.type === 'price' ? (
       <PricePopupContent item={payload.item} />
     ) : payload.type === 'risk' ? (
       <RiskPopupContent item={payload.item} />
-    ) : (
+    ) : payload.type === 'jpmorgan' ? (
       <JPMorganPopupContent office={payload.office} />
+    ) : (
+      <TravelAdvisoryPopupContent item={payload.item} />
     )
 
   return (

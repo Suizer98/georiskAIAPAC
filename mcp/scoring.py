@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -9,31 +10,38 @@ import httpx
 from constant import (
     RESTCOUNTRIES_API_URL,
     WORLDBANK_API_URL,
-    USGS_EARTHQUAKE_API_URL,
     GDELT_DOC_API_URL,
     GDELT_GEO_API_URL,
     TIMEOUT_SHORT,
     TIMEOUT_STANDARD,
     TIMEOUT_LONG,
-    GDELT_TIMESPAN_7D,
+    TIMEOUT_MEDIUM,
     GDELT_TIMESPAN_24H,
     GDELT_TIMESPAN_30D,
+    APAC_ISO2_MAP,
 )
 
 logger = logging.getLogger(__name__)
 
 
 def _get_iso2_code(country_name: str) -> str:
+    # First try static mapping for APAC countries (faster, no API call)
+    country_normalized = country_name.strip()
+    if country_normalized in APAC_ISO2_MAP:
+        return APAC_ISO2_MAP[country_normalized]
+    
+    # Fallback to API for other countries (but with longer timeout)
     try:
         url = f"{RESTCOUNTRIES_API_URL}/{country_name}"
-        resp = httpx.get(url, timeout=TIMEOUT_SHORT)
+        resp = httpx.get(url, timeout=TIMEOUT_MEDIUM)  # Use longer timeout
         resp.raise_for_status()
         data = resp.json()
         if isinstance(data, list) and len(data) > 0:
             return data[0].get("cca2", country_name[:2].upper())
     except Exception as e:
-        logger.warning(f"Failed to fetch ISO2 for {country_name}: {e}")
+        logger.debug(f"Failed to fetch ISO2 for {country_name}: {e}")
     
+    # Final fallback: use first 2 letters
     return country_name[:2].upper()
 
 
@@ -150,124 +158,145 @@ def score_safety(country: str) -> dict[str, Any]:
         }
 
 
-def score_hazard(country: str) -> dict[str, Any]:
-    source = "USGS Earthquake API (Seismic Risk)"
+def _get_official_country_name(country: str) -> list[str]:
+    """Get official country names from REST Countries API and create variations."""
+    variations = [country.strip()]
+    
     try:
-        # USGS API: Count earthquakes > Mag 4.5 in last 1 year.
-        # This is a proxy for seismic/hazard activity in the region.
-        # Ideally we'd bound box by country, but for simplicity we rely on
-        # generic "risk" or just return a general index.
-        # Actually, USGS doesn't support "query by country name" easily without a bbox.
-        # Use Open-Meteo for a specific coordinate (Capital City).
-        # We need lat/lon for that.
-        # Use the country lat/lon if available from _get_iso2_code's restcountries response.
-        
-        # 1. Get Lat/Lon for Capital
-        url_geo = f"{RESTCOUNTRIES_API_URL}/{country}"
-        resp_geo = httpx.get(url_geo, timeout=TIMEOUT_SHORT)
-        resp_geo.raise_for_status()
-        data_geo = resp_geo.json()
-        if not data_geo:
-             raise ValueError("Country not found")
-        
-        # Approximate center of country
-        lat, lon = data_geo[0].get("latlng", [0, 0])
-        
-        # 2. Query USGS for quakes within 5 degrees (~500km radius) of center in last 365 days
-        start_time = (datetime.utcnow() - timedelta(days=365)).strftime("%Y-%m-%d")
-        end_time = datetime.utcnow().strftime("%Y-%m-%d")
-        
-        resp = httpx.get(
-            USGS_EARTHQUAKE_API_URL,
-            params={
-                "format": "geojson",
-                "starttime": start_time,
-                "endtime": end_time,
-                "latitude": lat,
-                "longitude": lon,
-                "maxradius": 2, # 2 degrees (~220km)
-                "minmagnitude": 5.5
-            },
-            timeout=TIMEOUT_STANDARD
-        )
+        url = f"{RESTCOUNTRIES_API_URL}/{country}"
+        resp = httpx.get(url, timeout=TIMEOUT_SHORT)
         resp.raise_for_status()
-        count_quakes = resp.json().get("count", 0)
-        
-        # Score based on quake frequency
-        # 0 = Low risk (score 0.1)
-        # 1-2 = Moderate (score 0.3)
-        # 5+ = High (score 0.7)
-        # 20+ = Very High (score 0.9)
-        
-        hazard_score = _score_from_thresholds(
-            float(count_quakes),
-            [
-                (0, 0.1),
-                (2, 0.3),
-                (10, 0.6),
-                (20, 0.8),
-                (1000, 1.0),
-            ],
-        )
-        
-        return {
-            "score": _clamp(hazard_score),
-            "value": count_quakes,
-            "source": f"{source} (Quakes >4.5 within 5deg of {lat},{lon})",
-            "retrieved_at": datetime.utcnow().isoformat() + "Z",
-        }
+        data = resp.json()
+        if isinstance(data, list) and len(data) > 0:
+            entry = data[0]
+            # Get official name
+            official_name = entry.get("name", {}).get("official", country)
+            common_name = entry.get("name", {}).get("common", country)
+            variations.extend([official_name, common_name])
+            
+            # Get alternative spellings
+            alt_spellings = entry.get("altSpellings", [])
+            variations.extend(alt_spellings)
+    except Exception as e:
+        logger.debug(f"Could not fetch official name for {country}: {e}")
+    
+    # Add manual mappings for US State Department naming conventions
+    us_state_dept_mapping = {
+        "China": ["China", "People's Republic of China"],
+        "South Korea": ["South Korea", "Korea", "Republic of Korea"],
+        "North Korea": ["North Korea", "Democratic People's Republic of Korea", "DPRK"],
+        "Russia": ["Russia", "Russian Federation"],
+        "United Kingdom": ["United Kingdom", "UK", "Britain", "Great Britain"],
+        "United States": ["United States", "USA", "US", "America"],
+        "Myanmar": ["Myanmar", "Burma"],
+        "Brunei": ["Brunei", "Brunei Darussalam"],
+        "Cambodia": ["Cambodia", "Kampuchea"],
+        "Laos": ["Laos", "Lao People's Democratic Republic"],
+        "Ivory Coast": ["Ivory Coast", "Côte d'Ivoire", "Cote d'Ivoire"],
+        "East Timor": ["East Timor", "Timor-Leste"],
+        "Macedonia": ["Macedonia", "North Macedonia"],
+    }
+    
+    country_normalized = country.strip()
+    if country_normalized in us_state_dept_mapping:
+        variations.extend(us_state_dept_mapping[country_normalized])
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_variations = []
+    for v in variations:
+        v_lower = v.lower()
+        if v_lower not in seen:
+            seen.add(v_lower)
+            unique_variations.append(v)
+    
+    return unique_variations
 
-    except Exception as exc:
-        logger.warning(f"Error in score_hazard: {exc}")
-        return {
-            "score": 0.5,
-            "value": None,
-            "source": source,
-            "error": str(exc),
-            "retrieved_at": datetime.utcnow().isoformat() + "Z",
-        }
 
-
-def score_gold(country: str) -> dict[str, Any]:
-    source = "GDELT DOC 2.0 API (gold market attention)"
+def score_ambassy_advice(country: str) -> dict[str, Any]:
+    source = "US State Department Travel Advisory"
     try:
-        query = f'gold AND "{country}"'
-        resp = httpx.get(
-            GDELT_DOC_API_URL,
-            params={
-                "query": query,
-                "mode": "TimelineVol",
-                "format": "json",
-                "timespan": GDELT_TIMESPAN_7D,
-            },
-            timeout=TIMEOUT_LONG,
-        )
+        # Use the official API endpoint
+        api_url = "https://cadataapi.state.gov/api/TravelAdvisories"
+        resp = httpx.get(api_url, timeout=TIMEOUT_STANDARD)
         resp.raise_for_status()
-        payload = resp.json()
-        timeline = payload.get("timeline", [])
-        total_mentions = sum(
-            float(row.get("value", 0)) for row in timeline if row
-        )
-
-        gold_score = _score_from_thresholds(
-            total_mentions,
-            [
-                (0, 0.2),
-                (5, 0.35),
-                (20, 0.5),
-                (50, 0.65),
-                (100, 0.8),
-                (10_000, 0.95),
-            ],
-        )
+        advisories = resp.json()
+        
+        if not isinstance(advisories, list):
+            raise ValueError("API did not return a list of advisories")
+        
+        # Get country name variations for matching
+        country_variations = _get_official_country_name(country)
+        country_lower = country.lower()
+        country_variations_lower = [v.lower() for v in country_variations]
+        
+        # Also try to get ISO2 code for Category matching
+        iso2_code = _get_iso2_code(country)
+        
+        level = None
+        matched_country = None
+        
+        # Search through advisories for matching country
+        for advisory in advisories:
+            title = advisory.get("Title", "")
+            category = advisory.get("Category", [])
+            
+            # Check Category field (contains ISO2 codes like ["PK"])
+            if iso2_code in category:
+                # Extract level from title (e.g., "Pakistan - Level 3: Reconsider Travel")
+                match = re.search(r'Level\s+(\d+)', title, re.IGNORECASE)
+                if match:
+                    level = int(match.group(1))
+                    matched_country = title
+                    break
+            
+            # Also check if country name appears in title
+            if not level:
+                title_lower = title.lower()
+                for variant_lower in country_variations_lower:
+                    # Check if variant appears at the start of title (before " - Level")
+                    if title_lower.startswith(variant_lower + " -") or title_lower.startswith(variant_lower + " –"):
+                        match = re.search(r'Level\s+(\d+)', title, re.IGNORECASE)
+                        if match:
+                            level = int(match.group(1))
+                            matched_country = title
+                            break
+                
+                if level:
+                    break
+        
+        if level is None:
+            logger.warning(f"Could not find travel advisory level for country: {country} (tried variations: {country_variations[:5]})")
+            return {
+                "score": 0.5,
+                "value": None,
+                "source": source,
+                "error": f"Country '{country}' not found in travel advisories. Tried variations: {', '.join(country_variations[:5])}",
+                "retrieved_at": datetime.utcnow().isoformat() + "Z",
+            }
+        
+        # Convert level to risk score (0-1 scale)
+        # Level 1 = Exercise normal precautions = 0.1 (low risk)
+        # Level 2 = Exercise increased caution = 0.3 (moderate risk)
+        # Level 3 = Reconsider travel = 0.7 (high risk)
+        # Level 4 = Do not travel = 1.0 (very high risk)
+        level_to_score = {
+            1: 0.1,
+            2: 0.3,
+            3: 0.7,
+            4: 1.0,
+        }
+        
+        ambassy_score = level_to_score.get(level, 0.5)
+        
         return {
-            "score": _clamp(gold_score),
-            "value": total_mentions,
+            "score": _clamp(ambassy_score),
+            "value": level,
             "source": source,
             "retrieved_at": datetime.utcnow().isoformat() + "Z",
         }
     except Exception as exc:
-        logger.warning(f"Error in score_gold: {exc}")
+        logger.warning(f"Error in score_ambassy_advice: {exc}")
         return {
             "score": 0.5,
             "value": None,
@@ -399,24 +428,22 @@ def score_military(country: str) -> dict[str, Any]:
 def score_overall(country: str) -> dict[str, Any]:
     economy = score_economy(country)
     safety = score_safety(country)
-    hazard = score_hazard(country)
     military = score_military(country)
-    gold = score_gold(country)
     uncertainty = score_uncertainty(country)
+    ambassy_advice = score_ambassy_advice(country)
     
     errors = [
         component["error"]
-        for component in (economy, safety, hazard, military, gold, uncertainty)
+        for component in (economy, safety, military, uncertainty, ambassy_advice)
         if component.get("error")
     ]
     
     risk = (
-        (20.0 * military["score"])
-        + (15.0 * hazard["score"])
-        + (20.0 * (1.0 - economy["score"]))
-        + (20.0 * (1.0 - safety["score"]))
-        + (10.0 * gold["score"])
+        (25.0 * military["score"])
+        + (25.0 * (1.0 - economy["score"]))
+        + (25.0 * (1.0 - safety["score"]))
         + (15.0 * uncertainty["score"])
+        + (10.0 * ambassy_advice["score"])
     )
     return {
         "risk_level": round(_clamp(risk / 100.0) * 100.0, 2),
@@ -424,11 +451,10 @@ def score_overall(country: str) -> dict[str, Any]:
             "military": military,
             "economy": economy,
             "safety": safety,
-            "hazard": hazard,
-            "gold": gold,
             "uncertainty": uncertainty,
+            "ambassy_advice": ambassy_advice,
         },
         "errors": errors,
         "retrieved_at": datetime.utcnow().isoformat() + "Z",
-        "formula": "20*military + 15*hazard + 20*(1-economy) + 20*(1-safety) + 10*gold + 15*uncertainty",
+        "formula": "25*military + 25*(1-economy) + 25*(1-safety) + 15*uncertainty + 10*ambassy_advice",
     }

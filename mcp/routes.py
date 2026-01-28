@@ -5,7 +5,7 @@ import asyncio
 from urllib.parse import urljoin
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -18,15 +18,14 @@ from models import RiskData
 from schemas import RiskDataCreate, RiskDataOut, RiskDataUpdate
 from scoring import (
     score_economy,
-    score_hazard,
-    score_gold,
+    score_ambassy_advice,
     score_military,
     score_overall,
     score_safety,
     score_uncertainty,
 )
 from pricing import list_price_data
-from constant import TIMEOUT_API, HTTP_QUEUE_MAXSIZE
+from constant import TIMEOUT_API, TIMEOUT_STANDARD, HTTP_QUEUE_MAXSIZE, APAC_COUNTRIES, CACHE_TTL
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -213,19 +212,133 @@ def get_safety_score(country: str):
     return score_safety(country)
 
 
-@router.get("/api/score/hazard")
-def get_hazard_score(country: str):
-    return score_hazard(country)
-
-
-@router.get("/api/score/gold")
-def get_gold_score(country: str):
-    return score_gold(country)
-
-
 @router.get("/api/score/uncertainty")
 def get_uncertainty_score(country: str):
     return score_uncertainty(country)
+
+
+@router.get("/api/score/ambassy_advice")
+def get_ambassy_advice_score(country: str):
+    return score_ambassy_advice(country)
+
+
+# Cache for travel advisories
+_cache_travel_advisories: dict[str, Any] | None = None
+_cache_travel_advisories_time: datetime | None = None
+
+@router.get("/api/travel_advisories")
+def get_travel_advisories():
+    """Get travel advisory levels for all APAC countries - optimized to fetch API once."""
+    global _cache_travel_advisories, _cache_travel_advisories_time
+    
+    now = datetime.utcnow()
+    # Check cache
+    if _cache_travel_advisories and _cache_travel_advisories_time and now - _cache_travel_advisories_time < CACHE_TTL:
+        return _cache_travel_advisories
+    
+    # Import here to avoid circular imports
+    from scoring import _get_official_country_name
+    from constant import APAC_ISO2_MAP
+    
+    # Fetch travel advisories API once (not 14 times!)
+    try:
+        api_url = "https://cadataapi.state.gov/api/TravelAdvisories"
+        resp = httpx.get(api_url, timeout=TIMEOUT_STANDARD)
+        resp.raise_for_status()
+        advisories = resp.json()
+        
+        if not isinstance(advisories, list):
+            raise ValueError("API did not return a list of advisories")
+    except Exception as exc:
+        logger.error(f"Failed to fetch travel advisories: {exc}")
+        # Fallback: return error for all countries
+        items = []
+        for country in APAC_COUNTRIES:
+            items.append({
+                "country": country,
+                "level": None,
+                "error": f"Failed to fetch travel advisories: {str(exc)}",
+                "retrieved_at": now.isoformat() + "Z",
+            })
+        payload = {
+            "items": items,
+            "retrieved_at": now.isoformat() + "Z",
+        }
+        _cache_travel_advisories = payload
+        _cache_travel_advisories_time = now
+        return payload
+    
+    # Pre-compute country variations and ISO2 codes for all APAC countries
+    country_data = {}
+    for country in APAC_COUNTRIES:
+        country_variations = _get_official_country_name(country)
+        country_variations_lower = [v.lower() for v in country_variations]
+        iso2_code = APAC_ISO2_MAP.get(country, country[:2].upper())
+        country_data[country] = {
+            "variations": country_variations,
+            "variations_lower": country_variations_lower,
+            "iso2": iso2_code,
+        }
+    
+    # Process all countries from the single advisories list
+    items = []
+    for country in APAC_COUNTRIES:
+        level = None
+        matched_title = None
+        data = country_data[country]
+        
+        # Search through advisories for matching country
+        for advisory in advisories:
+            title = advisory.get("Title", "")
+            category = advisory.get("Category", [])
+            
+            # Check Category field (contains ISO2 codes like ["PK"])
+            if data["iso2"] in category:
+                match = re.search(r'Level\s+(\d+)', title, re.IGNORECASE)
+                if match:
+                    level = int(match.group(1))
+                    matched_title = title
+                    break
+            
+            # Also check if country name appears in title
+            if not level:
+                title_lower = title.lower()
+                for variant_lower in data["variations_lower"]:
+                    if title_lower.startswith(variant_lower + " -") or title_lower.startswith(variant_lower + " –"):
+                        match = re.search(r'Level\s+(\d+)', title, re.IGNORECASE)
+                        if match:
+                            level = int(match.group(1))
+                            matched_title = title
+                            break
+                
+                if level:
+                    break
+        
+        if level is None:
+            items.append({
+                "country": country,
+                "level": None,
+                "error": f"Country '{country}' not found in travel advisories",
+                "retrieved_at": now.isoformat() + "Z",
+            })
+        else:
+            items.append({
+                "country": country,
+                "level": level,
+                "error": None,
+                "retrieved_at": now.isoformat() + "Z",
+            })
+    
+    payload = {
+        "items": items,
+        "retrieved_at": now.isoformat() + "Z",
+    }
+    
+    # Update cache
+    _cache_travel_advisories = payload
+    _cache_travel_advisories_time = now
+    
+    return payload
 
 
 @router.get("/api/score/overall")

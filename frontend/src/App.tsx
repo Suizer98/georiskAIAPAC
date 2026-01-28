@@ -22,12 +22,14 @@ function App() {
   useEffect(() => {
     if (location.pathname.startsWith('/price')) {
       setLayer('risk', false)
+      setLayer('travel_advisory', false)
       setLayer('jpmorgan', false)
       setLayer('price', true)
       return
     }
     setLayer('price', false)
     setLayer('risk', true)
+    setLayer('travel_advisory', true) // Enable Travel Advisory with risk layer
     setLayer('jpmorgan', true) // Enable JP Morgan with risk layer
   }, [location.pathname, setLayer])
 

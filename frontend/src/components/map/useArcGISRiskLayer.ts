@@ -4,8 +4,6 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
 import Graphic from '@arcgis/core/Graphic'
 import Point from '@arcgis/core/geometry/Point'
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol'
-import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol'
-import Polygon from '@arcgis/core/geometry/Polygon'
 import type { RiskItem } from '../../store/riskStore'
 import { riskColor } from './riskColor'
 import type { MapPopupSelection } from './MapPopup'
@@ -107,7 +105,6 @@ export const useArcGISRiskLayer = (
         const alpha = 0.2 + 0.6 * (1 + Math.sin(time * 2 + phase)) / 2
         const rgb = hexToRgb(baseColor)
         const color = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`
-        const outlineColor = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${Math.min(1, alpha + 0.2)})`
 
         // Update point symbol
         if (graphic.symbol instanceof SimpleMarkerSymbol) {
@@ -120,20 +117,6 @@ export const useArcGISRiskLayer = (
               width: 3,
             },
           })
-        }
-
-        // Update ellipse symbol
-        if (graphic.attributes?.ellipseGraphic) {
-          const ellipseGraphic = graphic.attributes.ellipseGraphic as Graphic
-          if (ellipseGraphic.symbol instanceof SimpleFillSymbol) {
-            ellipseGraphic.symbol = new SimpleFillSymbol({
-              color: `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha * 0.7})`,
-              outline: {
-                color: outlineColor,
-                width: 2,
-              },
-            })
-          }
         }
       })
       animationRef.current = requestAnimationFrame(animate)
@@ -197,8 +180,7 @@ export const useArcGISRiskLayer = (
 
       const risk = Number(item?.risk_level ?? 0)
       const baseColor = riskColor(risk)
-      const radius = 120000 + (Math.min(risk, 100) / 100) * 220000
-      const pointSize = 24 + Math.round((Math.min(risk, 100) / 100) * 22)
+      const pointSize = 40 + Math.round((Math.min(risk, 100) / 100) * 30) // Increased from 24-46 to 40-70
 
       // Create point
       const point = new Point({
@@ -215,28 +197,6 @@ export const useArcGISRiskLayer = (
           color: 'rgba(0, 0, 0, 0.4)',
           width: 3,
         },
-      })
-
-      // Create ellipse (circle) geometry
-      const ellipseGeometry = createCircle(
-        item.longitude,
-        item.latitude,
-        radius
-      )
-
-      // Create ellipse symbol
-      const ellipseSymbol = new SimpleFillSymbol({
-        color: hexToRgba(baseColor, 0.45),
-        outline: {
-          color: hexToRgba(baseColor, 0.9),
-          width: 2,
-        },
-      })
-
-      // Create ellipse graphic
-      const ellipseGraphic = new Graphic({
-        geometry: ellipseGeometry,
-        symbol: ellipseSymbol,
       })
 
       // Create label graphic (initially hidden)
@@ -269,13 +229,12 @@ export const useArcGISRiskLayer = (
         symbol: pointSymbol,
         attributes: {
           item,
-          ellipseGraphic,
           labelGraphic,
         },
       })
 
       // Add all graphics to layer
-      graphicsLayer.addMany([ellipseGraphic, pointGraphic, labelGraphic])
+      graphicsLayer.addMany([pointGraphic, labelGraphic])
 
       heatmapRef.current.push({
         graphic: pointGraphic,
@@ -301,29 +260,4 @@ const hexToRgb = (hex: string): [number, number, number] => {
 const hexToRgba = (hex: string, alpha: number): string => {
   const [r, g, b] = hexToRgb(hex)
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
-const createCircle = (
-  longitude: number,
-  latitude: number,
-  radius: number
-): Polygon => {
-  const points: number[][] = []
-  const numPoints = 64
-  for (let i = 0; i < numPoints; i++) {
-    const angle = (i / numPoints) * 2 * Math.PI
-    // Approximate circle using degrees (simplified for small circles)
-    const dx = (radius / 111320) * Math.cos(angle) // 111320 meters per degree latitude
-    const dy =
-      (radius / (111320 * Math.cos((latitude * Math.PI) / 180))) *
-      Math.sin(angle)
-    points.push([longitude + dx, latitude + dy])
-  }
-  // Close the circle
-  points.push(points[0])
-
-  return new Polygon({
-    rings: [points],
-    spatialReference: { wkid: 4326 },
-  })
 }

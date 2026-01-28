@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useChatStore } from '../../store/chatStore'
 import { useRiskStore } from '../../store/riskStore'
 import { usePriceStore } from '../../store/priceStore'
+import { useTravelAdvisoryStore } from '../../store/travelAdvisoryStore'
 import Clock from './Clock'
 
 export default function TopBar() {
@@ -19,6 +20,9 @@ export default function TopBar() {
   const priceLoading = usePriceStore((state) => state.loading)
   const priceData = usePriceStore((state) => state.data)
   const priceError = usePriceStore((state) => state.error)
+  const travelAdvisoryLoading = useTravelAdvisoryStore((state) => state.loading)
+  const travelAdvisoryData = useTravelAdvisoryStore((state) => state.data)
+  const travelAdvisoryError = useTravelAdvisoryStore((state) => state.error)
   
   const isRiskActive = location.pathname.startsWith('/risk')
   const activeTab = isRiskActive ? 'risk' : 'price'
@@ -28,7 +32,8 @@ export default function TopBar() {
   // 2. Data is empty and no error (initial load state)
   const riskNeedsLoading = riskLoading || (riskData.length === 0 && !riskError)
   const priceNeedsLoading = priceLoading || (priceData.length === 0 && !priceError)
-  const isLoading = (activeTab === 'risk' && riskNeedsLoading) || (activeTab === 'price' && priceNeedsLoading)
+  const travelAdvisoryNeedsLoading = travelAdvisoryLoading || (travelAdvisoryData.length === 0 && !travelAdvisoryError)
+  const isLoading = (activeTab === 'risk' && (riskNeedsLoading || travelAdvisoryNeedsLoading)) || (activeTab === 'price' && priceNeedsLoading)
 
   // Debug: uncomment to check loading states
   // console.log('TopBar loading states:', { isRiskActive, isPriceActive, riskLoading, priceLoading, riskData: riskData.length, priceData: priceData.length, isLoading })
