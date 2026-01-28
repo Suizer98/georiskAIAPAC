@@ -29,6 +29,8 @@ export const useArcGISPriceLayer = (
       title: 'Metals Price',
     })
     view.map.add(graphicsLayer)
+    // Move price layer to top so it's clickable above other layers
+    view.map.reorder(graphicsLayer, view.map.layers.length - 1)
     graphicsLayerRef.current = graphicsLayer
 
     // Setup hover handler

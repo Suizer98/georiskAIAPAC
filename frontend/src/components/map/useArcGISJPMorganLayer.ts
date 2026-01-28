@@ -29,6 +29,8 @@ export const useArcGISJPMorganLayer = (
       title: 'JP Morgan Offices',
     })
     view.map.add(graphicsLayer)
+    // Move JP Morgan layer to top so it's clickable above other layers
+    view.map.reorder(graphicsLayer, view.map.layers.length - 1)
     graphicsLayerRef.current = graphicsLayer
 
     hoverHandlerRef.current = view.on('pointer-move', (event) => {

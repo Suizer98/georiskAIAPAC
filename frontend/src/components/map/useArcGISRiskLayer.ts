@@ -78,6 +78,22 @@ export const useArcGISRiskLayer = (
       if (view.destroyed) return
       view.hitTest(event).then((response) => {
         if (view.destroyed) return
+        
+        // Check for higher-priority layers first (JP Morgan, Price, etc.)
+        // These should take precedence over risk heatmap
+        const priorityLayers = response.results.find((result) => {
+          const layer = result.graphic?.layer
+          if (!layer) return false
+          const layerTitle = (layer as any).title
+          // Skip if it's a higher-priority point layer
+          return layerTitle === 'JP Morgan Offices' || layerTitle === 'Metals Price'
+        })
+        
+        // If a higher-priority layer was clicked, don't process risk click
+        if (priorityLayers) {
+          return
+        }
+        
         const graphic = response.results.find(
           (result) => result.graphic?.layer === graphicsLayer
         )?.graphic as Graphic | undefined
