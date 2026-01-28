@@ -85,7 +85,9 @@ export default function Clock() {
             <span className="text-sm text-slate-400">:</span>
             <span className="text-lg font-semibold text-white">{minutes}</span>
             <span className="text-sm text-slate-400">:</span>
-            <span className="text-sm font-medium text-slate-300">{seconds}</span>
+            <span className="text-sm font-medium text-slate-300">
+              {seconds}
+            </span>
           </div>
           <div className="text-xs text-slate-400">{dateStr}</div>
           <div className="text-xs text-slate-500 mt-0.5">{currentTzLabel}</div>

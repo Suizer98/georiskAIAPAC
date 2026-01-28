@@ -63,61 +63,71 @@ export const useArcGISTravelAdvisoryLayer = (
     if (onSelect) {
       hoverHandlerRef.current = view.on('pointer-move', (event: any) => {
         if (view.destroyed) return
-        view.hitTest(event).then((response: any) => {
-          if (view.destroyed) return
-          const graphic = response.results.find(
-            (result: any) => result.graphic?.layer === graphicsLayer
-          )?.graphic as Graphic | undefined
+        view
+          .hitTest(event)
+          .then((response: any) => {
+            if (view.destroyed) return
+            const graphic = response.results.find(
+              (result: any) => result.graphic?.layer === graphicsLayer
+            )?.graphic as Graphic | undefined
 
-          // If hovering over a different graphic, update popup
-          if (graphic && graphic !== hoverRef.current) {
-            const item = graphic.attributes?.item as TravelAdvisoryItem | undefined
-            if (item) {
-              const screenPoint = view.toScreen(event.mapPoint)
-              const rect = view.container.getBoundingClientRect()
-              onSelect({
-                x: rect.left + screenPoint.x,
-                y: rect.top + screenPoint.y,
-                position: event.mapPoint,
-                payload: { type: 'travel_advisory', item },
-              })
-              hoverRef.current = graphic
+            // If hovering over a different graphic, update popup
+            if (graphic && graphic !== hoverRef.current) {
+              const item = graphic.attributes?.item as
+                | TravelAdvisoryItem
+                | undefined
+              if (item) {
+                const screenPoint = view.toScreen(event.mapPoint)
+                const rect = view.container.getBoundingClientRect()
+                onSelect({
+                  x: rect.left + screenPoint.x,
+                  y: rect.top + screenPoint.y,
+                  position: event.mapPoint,
+                  payload: { type: 'travel_advisory', item },
+                })
+                hoverRef.current = graphic
+              }
+            } else if (!graphic && hoverRef.current) {
+              // Mouse moved away from any graphic, hide popup
+              onSelect(null)
+              hoverRef.current = null
             }
-          } else if (!graphic && hoverRef.current) {
-            // Mouse moved away from any graphic, hide popup
-            onSelect(null)
-            hoverRef.current = null
-          }
-        }).catch(() => {
-          // Ignore hitTest errors
-        })
+          })
+          .catch(() => {
+            // Ignore hitTest errors
+          })
       })
 
       // Setup click handler to show popup
       clickHandlerRef.current = view.on('click', (event: any) => {
         if (view.destroyed) return
-        view.hitTest(event).then((response: any) => {
-          if (view.destroyed) return
-          const graphic = response.results.find(
-            (result: any) => result.graphic?.layer === graphicsLayer
-          )?.graphic as Graphic | undefined
+        view
+          .hitTest(event)
+          .then((response: any) => {
+            if (view.destroyed) return
+            const graphic = response.results.find(
+              (result: any) => result.graphic?.layer === graphicsLayer
+            )?.graphic as Graphic | undefined
 
-          if (graphic) {
-            const item = graphic.attributes.item as TravelAdvisoryItem | undefined
-            if (item) {
-              const screenPoint = view.toScreen(event.mapPoint)
-              const rect = view.container.getBoundingClientRect()
-              onSelect({
-                x: rect.left + screenPoint.x,
-                y: rect.top + screenPoint.y,
-                position: event.mapPoint,
-                payload: { type: 'travel_advisory', item },
-              })
+            if (graphic) {
+              const item = graphic.attributes.item as
+                | TravelAdvisoryItem
+                | undefined
+              if (item) {
+                const screenPoint = view.toScreen(event.mapPoint)
+                const rect = view.container.getBoundingClientRect()
+                onSelect({
+                  x: rect.left + screenPoint.x,
+                  y: rect.top + screenPoint.y,
+                  position: event.mapPoint,
+                  payload: { type: 'travel_advisory', item },
+                })
+              }
             }
-          }
-        }).catch(() => {
-          // Ignore hitTest errors
-        })
+          })
+          .catch(() => {
+            // Ignore hitTest errors
+          })
       })
     }
 
@@ -135,7 +145,10 @@ export const useArcGISTravelAdvisoryLayer = (
         try {
           currentView.map.remove(graphicsLayerRef.current)
         } catch (error) {
-          console.warn('Failed to remove travel advisory graphics layer:', error)
+          console.warn(
+            'Failed to remove travel advisory graphics layer:',
+            error
+          )
         }
       }
       graphicsLayerRef.current = null
@@ -166,46 +179,46 @@ export const useArcGISTravelAdvisoryLayer = (
 
       // Country name to ISO3 code mapping for GeoJSON matching
       const countryToISO3: Record<string, string> = {
-        'Australia': 'AUS',
-        'Brunei': 'BRN',
-        'Cambodia': 'KHM',
-        'China': 'CHN',
+        Australia: 'AUS',
+        Brunei: 'BRN',
+        Cambodia: 'KHM',
+        China: 'CHN',
         'Hong Kong': 'HKG',
-        'India': 'IND',
-        'Indonesia': 'IDN',
-        'Japan': 'JPN',
-        'Laos': 'LAO',
-        'Malaysia': 'MYS',
-        'Myanmar': 'MMR',
+        India: 'IND',
+        Indonesia: 'IDN',
+        Japan: 'JPN',
+        Laos: 'LAO',
+        Malaysia: 'MYS',
+        Myanmar: 'MMR',
         'New Zealand': 'NZL',
-        'Philippines': 'PHL',
-        'Singapore': 'SGP',
+        Philippines: 'PHL',
+        Singapore: 'SGP',
         'South Korea': 'KOR',
-        'Taiwan': 'TWN',
-        'Thailand': 'THA',
-        'Vietnam': 'VNM',
+        Taiwan: 'TWN',
+        Thailand: 'THA',
+        Vietnam: 'VNM',
       }
 
       // Country name to ISO2 code mapping for fallback matching
       const countryToISO2: Record<string, string> = {
-        'Australia': 'AU',
-        'Brunei': 'BN',
-        'Cambodia': 'KH',
-        'China': 'CN',
+        Australia: 'AU',
+        Brunei: 'BN',
+        Cambodia: 'KH',
+        China: 'CN',
         'Hong Kong': 'HK',
-        'India': 'IN',
-        'Indonesia': 'ID',
-        'Japan': 'JP',
-        'Laos': 'LA',
-        'Malaysia': 'MY',
-        'Myanmar': 'MM',
+        India: 'IN',
+        Indonesia: 'ID',
+        Japan: 'JP',
+        Laos: 'LA',
+        Malaysia: 'MY',
+        Myanmar: 'MM',
         'New Zealand': 'NZ',
-        'Philippines': 'PH',
-        'Singapore': 'SG',
+        Philippines: 'PH',
+        Singapore: 'SG',
         'South Korea': 'KR',
-        'Taiwan': 'TW',
-        'Thailand': 'TH',
-        'Vietnam': 'VN',
+        Taiwan: 'TW',
+        Thailand: 'TH',
+        Vietnam: 'VN',
       }
 
       let successCount = 0
@@ -214,10 +227,13 @@ export const useArcGISTravelAdvisoryLayer = (
       // Fetch the world GeoJSON file once
       let worldGeoJson: any = null
       try {
-        const worldGeoJsonUrl = 'https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson'
+        const worldGeoJsonUrl =
+          'https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson'
         const worldResponse = await fetch(worldGeoJsonUrl)
         if (!worldResponse.ok) {
-          throw new Error(`Failed to fetch world GeoJSON: ${worldResponse.status}`)
+          throw new Error(
+            `Failed to fetch world GeoJSON: ${worldResponse.status}`
+          )
         }
         worldGeoJson = await worldResponse.json()
       } catch (error) {
@@ -225,7 +241,11 @@ export const useArcGISTravelAdvisoryLayer = (
         return
       }
 
-      if (!worldGeoJson || worldGeoJson.type !== 'FeatureCollection' || !Array.isArray(worldGeoJson.features)) {
+      if (
+        !worldGeoJson ||
+        worldGeoJson.type !== 'FeatureCollection' ||
+        !Array.isArray(worldGeoJson.features)
+      ) {
         console.error('Invalid world GeoJSON format')
         return
       }
@@ -248,58 +268,86 @@ export const useArcGISTravelAdvisoryLayer = (
           // Find matching country in world GeoJSON
           const countryFeature = worldGeoJson.features.find((feature: any) => {
             // Match by ISO3 code (id field) - check both string and number
-            if (feature.id === iso3 || feature.id === iso3.toLowerCase() || String(feature.id) === iso3) {
+            if (
+              feature.id === iso3 ||
+              feature.id === iso3.toLowerCase() ||
+              String(feature.id) === iso3
+            ) {
               return true
             }
-            
+
             // Match by ISO3 code in properties
             const props = feature.properties || {}
-            if (props.iso_a3 === iso3 || props.ISO_A3 === iso3 || props.ISO3 === iso3 || 
-                props.iso3 === iso3 || props.ISO_A3_EH === iso3 ||
-                props['ISO3166-1-Alpha-3'] === iso3 || props['iso3166-1-alpha-3'] === iso3) {
+            if (
+              props.iso_a3 === iso3 ||
+              props.ISO_A3 === iso3 ||
+              props.ISO3 === iso3 ||
+              props.iso3 === iso3 ||
+              props.ISO_A3_EH === iso3 ||
+              props['ISO3166-1-Alpha-3'] === iso3 ||
+              props['iso3166-1-alpha-3'] === iso3
+            ) {
               return true
             }
-            
+
             // Match by ISO2 code in properties (fallback)
             const iso2 = countryToISO2[item.country]
-            if (iso2 && (props.iso_a2 === iso2 || props.ISO_A2 === iso2 || props.ISO2 === iso2 || 
-                         props.iso2 === iso2 || props.ISO_A2_EH === iso2 ||
-                         props['ISO3166-1-Alpha-2'] === iso2 || props['iso3166-1-alpha-2'] === iso2)) {
+            if (
+              iso2 &&
+              (props.iso_a2 === iso2 ||
+                props.ISO_A2 === iso2 ||
+                props.ISO2 === iso2 ||
+                props.iso2 === iso2 ||
+                props.ISO_A2_EH === iso2 ||
+                props['ISO3166-1-Alpha-2'] === iso2 ||
+                props['iso3166-1-alpha-2'] === iso2)
+            ) {
               return true
             }
-            
+
             // Match by country name in properties - check multiple possible fields
-            const nameFields = ['name', 'NAME', 'NAME_LONG', 'NAME_EN', 'NAME_ENG', 'admin', 'ADMIN', 'country', 'COUNTRY']
+            const nameFields = [
+              'name',
+              'NAME',
+              'NAME_LONG',
+              'NAME_EN',
+              'NAME_ENG',
+              'admin',
+              'ADMIN',
+              'country',
+              'COUNTRY',
+            ]
             const countryLower = item.country.toLowerCase()
-            
+
             for (const field of nameFields) {
               const name = props[field] || ''
               const nameLower = name.toLowerCase()
-              
+
               // Check exact match only
               if (nameLower === countryLower) {
                 return true
               }
             }
-            
+
             return false
           })
 
           if (!countryFeature) {
-            console.warn(`Country feature not found in GeoJSON for ${item.country} (${iso3})`)
+            console.warn(
+              `Country feature not found in GeoJSON for ${item.country} (${iso3})`
+            )
             errorCount++
             continue
           }
-          
+
           // Create a FeatureCollection with just this country
           const countryGeoJson = {
             type: 'FeatureCollection',
-            features: [countryFeature]
+            features: [countryFeature],
           }
-          
+
           await renderCountryGeometry(countryGeoJson, item, graphicsLayer)
           successCount++
-          
         } catch (error) {
           console.warn(`Failed to process boundary for ${item.country}:`, error)
           errorCount++
@@ -323,14 +371,20 @@ export const useArcGISTravelAdvisoryLayer = (
       const alpha = level === null ? 0.1 : 0.4
 
       // Convert GeoJSON to ArcGIS geometry
-      if (geoJson.type === 'FeatureCollection' && Array.isArray(geoJson.features)) {
+      if (
+        geoJson.type === 'FeatureCollection' &&
+        Array.isArray(geoJson.features)
+      ) {
         for (const feature of geoJson.features) {
           if (!feature.geometry) continue
-          
+
           const geometry = feature.geometry
           if (geometry.type === 'Polygon') {
             // Polygon: coordinates is an array of rings (first is outer, rest are holes)
-            const outerRing = geometry.coordinates[0].map((coord: number[]) => [coord[0], coord[1]])
+            const outerRing = geometry.coordinates[0].map((coord: number[]) => [
+              coord[0],
+              coord[1],
+            ])
             const polygon = new Polygon({
               rings: [outerRing],
               spatialReference: { wkid: 4326 },
@@ -359,7 +413,10 @@ export const useArcGISTravelAdvisoryLayer = (
           } else if (geometry.type === 'MultiPolygon') {
             // MultiPolygon: coordinates is an array of polygons
             for (const polygonCoords of geometry.coordinates) {
-              const outerRing = polygonCoords[0].map((coord: number[]) => [coord[0], coord[1]])
+              const outerRing = polygonCoords[0].map((coord: number[]) => [
+                coord[0],
+                coord[1],
+              ])
               const polygon = new Polygon({
                 rings: [outerRing],
                 spatialReference: { wkid: 4326 },
@@ -385,16 +442,26 @@ export const useArcGISTravelAdvisoryLayer = (
 
               graphicsLayer.add(graphic)
             }
-            countryGraphicsRef.current.set(item.country, graphicsLayer.graphics.getItemAt(graphicsLayer.graphics.length - 1))
+            countryGraphicsRef.current.set(
+              item.country,
+              graphicsLayer.graphics.getItemAt(
+                graphicsLayer.graphics.length - 1
+              )
+            )
           } else {
-            console.warn(`Unsupported geometry type: ${geometry.type} for ${item.country}`)
+            console.warn(
+              `Unsupported geometry type: ${geometry.type} for ${item.country}`
+            )
           }
         }
       } else if (geoJson.type === 'Feature' && geoJson.geometry) {
         // Handle single feature
         const geometry = geoJson.geometry
         if (geometry.type === 'Polygon') {
-          const outerRing = geometry.coordinates[0].map((coord: number[]) => [coord[0], coord[1]])
+          const outerRing = geometry.coordinates[0].map((coord: number[]) => [
+            coord[0],
+            coord[1],
+          ])
           const polygon = new Polygon({
             rings: [outerRing],
             spatialReference: { wkid: 4326 },
@@ -422,7 +489,10 @@ export const useArcGISTravelAdvisoryLayer = (
           countryGraphicsRef.current.set(item.country, graphic)
         } else if (geometry.type === 'MultiPolygon') {
           for (const polygonCoords of geometry.coordinates) {
-            const outerRing = polygonCoords[0].map((coord: number[]) => [coord[0], coord[1]])
+            const outerRing = polygonCoords[0].map((coord: number[]) => [
+              coord[0],
+              coord[1],
+            ])
             const polygon = new Polygon({
               rings: [outerRing],
               spatialReference: { wkid: 4326 },
@@ -448,7 +518,10 @@ export const useArcGISTravelAdvisoryLayer = (
 
             graphicsLayer.add(graphic)
           }
-          countryGraphicsRef.current.set(item.country, graphicsLayer.graphics.getItemAt(graphicsLayer.graphics.length - 1))
+          countryGraphicsRef.current.set(
+            item.country,
+            graphicsLayer.graphics.getItemAt(graphicsLayer.graphics.length - 1)
+          )
         }
       }
     } catch (error) {

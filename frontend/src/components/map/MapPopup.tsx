@@ -30,7 +30,9 @@ const PricePopupContent = ({ item }: { item: PriceItem }) => {
   const goldUsd =
     typeof item.gold_usd === 'number' ? `$${item.gold_usd.toFixed(2)}` : 'N/A'
   const silverUsd =
-    typeof item.silver_usd === 'number' ? `$${item.silver_usd.toFixed(2)}` : 'N/A'
+    typeof item.silver_usd === 'number'
+      ? `$${item.silver_usd.toFixed(2)}`
+      : 'N/A'
   const goldUnit = item.gold_unit ?? item.unit ?? 'unit'
   const silverUnit = item.silver_unit ?? item.unit ?? 'unit'
   const localCode = item.currency ?? 'LOCAL'
@@ -95,8 +97,7 @@ const RiskPopupContent = ({ item }: { item: RiskItem }) => {
           <span
             className="font-mono font-bold"
             style={{
-              color:
-                risk > 50 ? '#ef4444' : risk > 20 ? '#eab308' : '#22c55e',
+              color: risk > 50 ? '#ef4444' : risk > 20 ? '#eab308' : '#22c55e',
             }}
           >
             {Math.round(risk)}/100
@@ -134,12 +135,16 @@ const JPMorganPopupContent = ({ office }: { office: JPMorganOffice }) => {
         <div className="my-1 h-px bg-gray-700" />
         <div className="space-y-1">
           <span className="text-gray-400 text-xs">Address</span>
-          <div className="font-mono text-xs text-gray-300">{office.address}</div>
+          <div className="font-mono text-xs text-gray-300">
+            {office.address}
+          </div>
         </div>
         {office.office_type && (
           <div className="flex justify-between gap-4">
             <span className="text-gray-400">Type</span>
-            <span className="font-mono text-gray-200">{office.office_type}</span>
+            <span className="font-mono text-gray-200">
+              {office.office_type}
+            </span>
           </div>
         )}
         <div className="flex justify-between gap-4">
@@ -162,7 +167,16 @@ const TravelAdvisoryPopupContent = ({ item }: { item: TravelAdvisoryItem }) => {
     4: 'Do Not Travel',
   }
   const levelDescription = level ? levelDescriptions[level] : 'No Data'
-  const levelColor = level === 1 ? '#22c55e' : level === 2 ? '#eab308' : level === 3 ? '#f97316' : level === 4 ? '#ef4444' : '#6b7280'
+  const levelColor =
+    level === 1
+      ? '#22c55e'
+      : level === 2
+        ? '#eab308'
+        : level === 3
+          ? '#f97316'
+          : level === 4
+            ? '#ef4444'
+            : '#6b7280'
 
   return (
     <div className="space-y-2">
@@ -174,17 +188,12 @@ const TravelAdvisoryPopupContent = ({ item }: { item: TravelAdvisoryItem }) => {
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-gray-400">Advisory Level</span>
-          <span
-            className="font-mono font-bold"
-            style={{ color: levelColor }}
-          >
+          <span className="font-mono font-bold" style={{ color: levelColor }}>
             {level ? `Level ${level}` : 'N/A'}
           </span>
         </div>
         {level && (
-          <div className="text-xs text-gray-400 italic">
-            {levelDescription}
-          </div>
+          <div className="text-xs text-gray-400 italic">{levelDescription}</div>
         )}
         {item.error && (
           <div className="text-xs text-yellow-400">{item.error}</div>

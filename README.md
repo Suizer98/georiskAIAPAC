@@ -36,6 +36,20 @@ VITE_BACKEND_AGENT=http://localhost:7000
 docker compose exec mcp python init_db.py
 ```
 
+## Format code (Prettier + Black)
+With services up, format frontend and backend from the repo root:
+```
+docker compose exec frontend npm run format
+docker compose exec mcp black .
+docker compose exec agent black .
+```
+Check only (no write):
+```
+docker compose exec frontend npm run format:check
+docker compose exec mcp black --check .
+docker compose exec agent black --check .
+```
+
 ## Endpoints and Swagger interface
 - Frontend: http://localhost:3000
 - Agent API: http://localhost:7000/docs

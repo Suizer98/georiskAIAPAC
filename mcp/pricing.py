@@ -30,11 +30,7 @@ def _parse_metals_live(payload: Any) -> dict[str, float | None]:
     data: dict[str, float] = {}
     if isinstance(payload, list):
         for row in payload:
-            if (
-                isinstance(row, list)
-                and len(row) >= 2
-                and isinstance(row[0], str)
-            ):
+            if isinstance(row, list) and len(row) >= 2 and isinstance(row[0], str):
                 data[row[0].lower()] = float(row[1])
     return {"gold": data.get("gold"), "silver": data.get("silver")}
 
@@ -63,9 +59,7 @@ def _parse_exchangerate_host(payload: Any) -> dict[str, float | None]:
     xau = rates.get("XAU")
     xag = rates.get("XAG")
     gold = 1.0 / float(xau) if isinstance(xau, (int, float)) and xau else None
-    silver = (
-        1.0 / float(xag) if isinstance(xag, (int, float)) and xag else None
-    )
+    silver = 1.0 / float(xag) if isinstance(xag, (int, float)) and xag else None
     return {"gold": gold, "silver": silver}
 
 

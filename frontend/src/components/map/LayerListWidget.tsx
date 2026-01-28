@@ -21,7 +21,7 @@ export default function LayerListWidget() {
   const location = useLocation()
   const layers = useLayerStore((state) => state.layers)
   const toggleLayer = useLayerStore((state) => state.toggleLayer)
-  
+
   // Get loading states and data from stores
   const riskLoading = useRiskStore((state) => state.loading)
   const riskData = useRiskStore((state) => state.data)
@@ -31,14 +31,16 @@ export default function LayerListWidget() {
   const jpmorganData = useJPMorganStore((state) => state.data)
   const travelAdvisoryLoading = useTravelAdvisoryStore((state) => state.loading)
   const travelAdvisoryData = useTravelAdvisoryStore((state) => state.data)
-  
+
   // Map layer IDs to their loading states
   // A layer is considered loading if:
   // 1. It's actively loading, OR
   // 2. It's enabled but has no data yet (initial load state)
-  const getLayerLoading = (id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory') => {
+  const getLayerLoading = (
+    id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory'
+  ) => {
     const isEnabled = layers.find((layer) => layer.id === id)?.enabled ?? false
-    
+
     switch (id) {
       case 'risk':
         return riskLoading || (isEnabled && riskData.length === 0)
@@ -47,7 +49,10 @@ export default function LayerListWidget() {
       case 'jpmorgan':
         return jpmorganLoading || (isEnabled && jpmorganData.length === 0)
       case 'travel_advisory':
-        return travelAdvisoryLoading || (isEnabled && travelAdvisoryData.length === 0)
+        return (
+          travelAdvisoryLoading ||
+          (isEnabled && travelAdvisoryData.length === 0)
+        )
       default:
         return false
     }
@@ -56,7 +61,7 @@ export default function LayerListWidget() {
   // Determine which legend items to show based on route
   const legendItems = useMemo<LegendItem[]>(() => {
     const isPriceRoute = location.pathname.startsWith('/price')
-    
+
     if (isPriceRoute) {
       return [
         {
@@ -68,7 +73,7 @@ export default function LayerListWidget() {
         },
       ]
     }
-    
+
     // Risk route
     return [
       {
@@ -96,7 +101,9 @@ export default function LayerListWidget() {
   }, [location.pathname])
 
   // Get layer visibility state
-  const getLayerVisibility = (id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory') => {
+  const getLayerVisibility = (
+    id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory'
+  ) => {
     return layers.find((layer) => layer.id === id)?.enabled ?? false
   }
 
@@ -129,7 +136,7 @@ export default function LayerListWidget() {
           </Tooltip.Portal>
         </Tooltip.Root>
       </Tooltip.Provider>
-      
+
       {/* Custom Legend */}
       {isOpen && (
         <div className="fixed top-[150px] right-[15px] z-40 w-[250px] rounded-lg border border-white/15 bg-slate-900/90 backdrop-blur-sm shadow-lg">
@@ -167,7 +174,9 @@ export default function LayerListWidget() {
                     }}
                   />
                   {/* Layer Name */}
-                  <span className={`flex-1 text-xs ${isLoading ? 'text-white/50' : 'text-white/90'}`}>
+                  <span
+                    className={`flex-1 text-xs ${isLoading ? 'text-white/50' : 'text-white/90'}`}
+                  >
                     {item.displayName}
                   </span>
                   {/* Visibility Toggle Button */}
@@ -185,7 +194,11 @@ export default function LayerListWidget() {
                         ? 'cursor-not-allowed opacity-40'
                         : 'hover:bg-white/10 text-white/60 hover:text-white/80'
                     }`}
-                    aria-label={isVisible ? `Hide ${item.displayName}` : `Show ${item.displayName}`}
+                    aria-label={
+                      isVisible
+                        ? `Hide ${item.displayName}`
+                        : `Show ${item.displayName}`
+                    }
                   >
                     {isVisible ? (
                       <svg

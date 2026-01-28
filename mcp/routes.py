@@ -25,7 +25,13 @@ from scoring import (
     score_uncertainty,
 )
 from pricing import list_price_data
-from constant import TIMEOUT_API, TIMEOUT_STANDARD, HTTP_QUEUE_MAXSIZE, APAC_COUNTRIES, CACHE_TTL
+from constant import (
+    TIMEOUT_API,
+    TIMEOUT_STANDARD,
+    HTTP_QUEUE_MAXSIZE,
+    APAC_COUNTRIES,
+    CACHE_TTL,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -99,9 +105,7 @@ async def risk_events():
 
 
 @router.post("/api/risk", response_model=RiskDataOut)
-async def create_risk_data(
-    payload: RiskDataCreate, db: Session = Depends(get_db)
-):
+async def create_risk_data(payload: RiskDataCreate, db: Session = Depends(get_db)):
     risk = (
         db.query(RiskData)
         .filter(RiskData.country == payload.country)
@@ -226,27 +230,32 @@ def get_ambassy_advice_score(country: str):
 _cache_travel_advisories: dict[str, Any] | None = None
 _cache_travel_advisories_time: datetime | None = None
 
+
 @router.get("/api/travel_advisories")
 def get_travel_advisories():
     """Get travel advisory levels for all APAC countries - optimized to fetch API once."""
     global _cache_travel_advisories, _cache_travel_advisories_time
-    
+
     now = datetime.utcnow()
     # Check cache
-    if _cache_travel_advisories and _cache_travel_advisories_time and now - _cache_travel_advisories_time < CACHE_TTL:
+    if (
+        _cache_travel_advisories
+        and _cache_travel_advisories_time
+        and now - _cache_travel_advisories_time < CACHE_TTL
+    ):
         return _cache_travel_advisories
-    
+
     # Import here to avoid circular imports
     from scoring import _get_official_country_name
     from constant import APAC_ISO2_MAP
-    
+
     # Fetch travel advisories API once (not 14 times!)
     try:
         api_url = "https://cadataapi.state.gov/api/TravelAdvisories"
         resp = httpx.get(api_url, timeout=TIMEOUT_STANDARD)
         resp.raise_for_status()
         advisories = resp.json()
-        
+
         if not isinstance(advisories, list):
             raise ValueError("API did not return a list of advisories")
     except Exception as exc:
@@ -254,12 +263,14 @@ def get_travel_advisories():
         # Fallback: return error for all countries
         items = []
         for country in APAC_COUNTRIES:
-            items.append({
-                "country": country,
-                "level": None,
-                "error": f"Failed to fetch travel advisories: {str(exc)}",
-                "retrieved_at": now.isoformat() + "Z",
-            })
+            items.append(
+                {
+                    "country": country,
+                    "level": None,
+                    "error": f"Failed to fetch travel advisories: {str(exc)}",
+                    "retrieved_at": now.isoformat() + "Z",
+                }
+            )
         payload = {
             "items": items,
             "retrieved_at": now.isoformat() + "Z",
@@ -267,7 +278,7 @@ def get_travel_advisories():
         _cache_travel_advisories = payload
         _cache_travel_advisories_time = now
         return payload
-    
+
     # Pre-compute country variations and ISO2 codes for all APAC countries
     country_data = {}
     for country in APAC_COUNTRIES:
@@ -279,65 +290,71 @@ def get_travel_advisories():
             "variations_lower": country_variations_lower,
             "iso2": iso2_code,
         }
-    
+
     # Process all countries from the single advisories list
     items = []
     for country in APAC_COUNTRIES:
         level = None
         matched_title = None
         data = country_data[country]
-        
+
         # Search through advisories for matching country
         for advisory in advisories:
             title = advisory.get("Title", "")
             category = advisory.get("Category", [])
-            
+
             # Check Category field (contains ISO2 codes like ["PK"])
             if data["iso2"] in category:
-                match = re.search(r'Level\s+(\d+)', title, re.IGNORECASE)
+                match = re.search(r"Level\s+(\d+)", title, re.IGNORECASE)
                 if match:
                     level = int(match.group(1))
                     matched_title = title
                     break
-            
+
             # Also check if country name appears in title
             if not level:
                 title_lower = title.lower()
                 for variant_lower in data["variations_lower"]:
-                    if title_lower.startswith(variant_lower + " -") or title_lower.startswith(variant_lower + " –"):
-                        match = re.search(r'Level\s+(\d+)', title, re.IGNORECASE)
+                    if title_lower.startswith(
+                        variant_lower + " -"
+                    ) or title_lower.startswith(variant_lower + " –"):
+                        match = re.search(r"Level\s+(\d+)", title, re.IGNORECASE)
                         if match:
                             level = int(match.group(1))
                             matched_title = title
                             break
-                
+
                 if level:
                     break
-        
+
         if level is None:
-            items.append({
-                "country": country,
-                "level": None,
-                "error": f"Country '{country}' not found in travel advisories",
-                "retrieved_at": now.isoformat() + "Z",
-            })
+            items.append(
+                {
+                    "country": country,
+                    "level": None,
+                    "error": f"Country '{country}' not found in travel advisories",
+                    "retrieved_at": now.isoformat() + "Z",
+                }
+            )
         else:
-            items.append({
-                "country": country,
-                "level": level,
-                "error": None,
-                "retrieved_at": now.isoformat() + "Z",
-            })
-    
+            items.append(
+                {
+                    "country": country,
+                    "level": level,
+                    "error": None,
+                    "retrieved_at": now.isoformat() + "Z",
+                }
+            )
+
     payload = {
         "items": items,
         "retrieved_at": now.isoformat() + "Z",
     }
-    
+
     # Update cache
     _cache_travel_advisories = payload
     _cache_travel_advisories_time = now
-    
+
     return payload
 
 
@@ -373,9 +390,7 @@ def _find_tool(name: str) -> dict | None:
     return None
 
 
-async def _call_tool(
-    request: Request, tool: dict, arguments: dict
-) -> dict | str:
+async def _call_tool(request: Request, tool: dict, arguments: dict) -> dict | str:
     req = tool.get("request", {})
     method = req.get("method", "POST")
     path = req.get("path", "/")
@@ -392,13 +407,9 @@ async def _call_tool(
     url = urljoin(base_url, url_path.lstrip("/"))
     async with httpx.AsyncClient(timeout=TIMEOUT_API) as client:
         if method in {"GET", "DELETE"}:
-            response = await client.request(
-                method, url, params=arguments
-            )
+            response = await client.request(method, url, params=arguments)
         else:
-            response = await client.request(
-                method, url, json=arguments
-            )
+            response = await client.request(method, url, json=arguments)
     response.raise_for_status()
     try:
         return response.json()
@@ -456,11 +467,7 @@ async def mcp_http(request: Request):
         return {
             "jsonrpc": "2.0",
             "id": msg_id,
-            "result": {
-                "content": [
-                    {"type": "text", "text": json.dumps(result)}
-                ]
-            },
+            "result": {"content": [{"type": "text", "text": json.dumps(result)}]},
         }
 
     return {

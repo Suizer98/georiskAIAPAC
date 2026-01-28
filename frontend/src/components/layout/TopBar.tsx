@@ -23,17 +23,23 @@ export default function TopBar() {
   const travelAdvisoryLoading = useTravelAdvisoryStore((state) => state.loading)
   const travelAdvisoryData = useTravelAdvisoryStore((state) => state.data)
   const travelAdvisoryError = useTravelAdvisoryStore((state) => state.error)
-  
+
   const isRiskActive = location.pathname.startsWith('/risk')
   const activeTab = isRiskActive ? 'risk' : 'price'
-  
+
   // Show loading if:
   // 1. Actively loading, OR
   // 2. Data is empty and no error (initial load state)
   const riskNeedsLoading = riskLoading || (riskData.length === 0 && !riskError)
-  const priceNeedsLoading = priceLoading || (priceData.length === 0 && !priceError)
-  const travelAdvisoryNeedsLoading = travelAdvisoryLoading || (travelAdvisoryData.length === 0 && !travelAdvisoryError)
-  const isLoading = (activeTab === 'risk' && (riskNeedsLoading || travelAdvisoryNeedsLoading)) || (activeTab === 'price' && priceNeedsLoading)
+  const priceNeedsLoading =
+    priceLoading || (priceData.length === 0 && !priceError)
+  const travelAdvisoryNeedsLoading =
+    travelAdvisoryLoading ||
+    (travelAdvisoryData.length === 0 && !travelAdvisoryError)
+  const isLoading =
+    (activeTab === 'risk' &&
+      (riskNeedsLoading || travelAdvisoryNeedsLoading)) ||
+    (activeTab === 'price' && priceNeedsLoading)
 
   return (
     <header className="fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur">
@@ -69,7 +75,10 @@ export default function TopBar() {
           </p>
         </div>
         <nav className="flex items-center gap-4">
-          <Tabs.Root value={activeTab} onValueChange={(value) => navigate(`/${value}`)}>
+          <Tabs.Root
+            value={activeTab}
+            onValueChange={(value) => navigate(`/${value}`)}
+          >
             <Tabs.List className="flex gap-2">
               <Tabs.Trigger
                 value="risk"
@@ -85,7 +94,10 @@ export default function TopBar() {
               </Tabs.Trigger>
             </Tabs.List>
           </Tabs.Root>
-          <Separator.Root orientation="vertical" className="h-8 w-px bg-white/10" />
+          <Separator.Root
+            orientation="vertical"
+            className="h-8 w-px bg-white/10"
+          />
           <div className="pl-4">
             <Clock />
           </div>
@@ -93,11 +105,9 @@ export default function TopBar() {
       </div>
       {isLoading && (
         <div className="relative h-0.5 w-full overflow-hidden bg-slate-800/50">
-          <div 
+          <div
             className={`absolute left-0 top-0 h-full w-1/3 ${
-              activeTab === 'risk'
-                ? 'bg-indigo-400/60' 
-                : 'bg-amber-400/60'
+              activeTab === 'risk' ? 'bg-indigo-400/60' : 'bg-amber-400/60'
             }`}
             style={{
               animation: 'shimmer 1.5s ease-in-out infinite',

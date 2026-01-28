@@ -7,3 +7,4 @@ ddgs
 python-dotenv
 httpx
 watchfiles
+black

@@ -22,7 +22,7 @@ export const useArcGISRiskLayer = (
 ) => {
   const animationRef = useRef<number | null>(null)
   const graphicsLayerRef = useRef<GraphicsLayer | null>(null)
-  
+
   // Set layer title for LayerList widget
   useEffect(() => {
     if (graphicsLayerRef.current) {
@@ -50,75 +50,84 @@ export const useArcGISRiskLayer = (
     // Setup hover handler
     hoverHandlerRef.current = view.on('pointer-move', (event) => {
       if (view.destroyed) return
-      view.hitTest(event).then((response) => {
-        if (view.destroyed) return
-        const graphic = response.results.find(
-          (result) => result.graphic?.layer === graphicsLayer
-        )?.graphic as Graphic | undefined
+      view
+        .hitTest(event)
+        .then((response) => {
+          if (view.destroyed) return
+          const graphic = response.results.find(
+            (result) => result.graphic?.layer === graphicsLayer
+          )?.graphic as Graphic | undefined
 
-        if (hoverRef.current && hoverRef.current !== graphic) {
-          const attributes = hoverRef.current.attributes
-          if (attributes?.labelGraphic) {
-            attributes.labelGraphic.visible = false
+          if (hoverRef.current && hoverRef.current !== graphic) {
+            const attributes = hoverRef.current.attributes
+            if (attributes?.labelGraphic) {
+              attributes.labelGraphic.visible = false
+            }
+            hoverRef.current = null
           }
-          hoverRef.current = null
-        }
 
-        if (graphic && graphic.attributes?.labelGraphic) {
-          graphic.attributes.labelGraphic.visible = true
-          hoverRef.current = graphic
-        }
-      }).catch(() => {
-        // Ignore hitTest errors
-      })
+          if (graphic && graphic.attributes?.labelGraphic) {
+            graphic.attributes.labelGraphic.visible = true
+            hoverRef.current = graphic
+          }
+        })
+        .catch(() => {
+          // Ignore hitTest errors
+        })
     })
 
     // Setup click handler
     clickHandlerRef.current = view.on('click', (event) => {
       if (view.destroyed) return
-      view.hitTest(event).then((response) => {
-        if (view.destroyed) return
-        
-        // Check for higher-priority layers first (JP Morgan, Price, etc.)
-        // These should take precedence over risk heatmap
-        const priorityLayers = response.results.find((result) => {
-          const layer = result.graphic?.layer
-          if (!layer) return false
-          const layerTitle = (layer as any).title
-          // Skip if it's a higher-priority point layer
-          return layerTitle === 'JP Morgan Offices' || layerTitle === 'Metals Price'
-        })
-        
-        // If a higher-priority layer was clicked, don't process risk click
-        if (priorityLayers) {
-          return
-        }
-        
-        const graphic = response.results.find(
-          (result) => result.graphic?.layer === graphicsLayer
-        )?.graphic as Graphic | undefined
+      view
+        .hitTest(event)
+        .then((response) => {
+          if (view.destroyed) return
 
-        if (graphic) {
-          const item = graphic.attributes.item as RiskItem
-          const screenPoint = view.toScreen(event.mapPoint)
-          const rect = view.container.getBoundingClientRect()
-          onSelect({
-            x: rect.left + screenPoint.x,
-            y: rect.top + screenPoint.y,
-            position: event.mapPoint,
-            payload: { type: 'risk', item },
+          // Check for higher-priority layers first (JP Morgan, Price, etc.)
+          // These should take precedence over risk heatmap
+          const priorityLayers = response.results.find((result) => {
+            const layer = result.graphic?.layer
+            if (!layer) return false
+            const layerTitle = (layer as any).title
+            // Skip if it's a higher-priority point layer
+            return (
+              layerTitle === 'JP Morgan Offices' ||
+              layerTitle === 'Metals Price'
+            )
           })
-        }
-      }).catch(() => {
-        // Ignore hitTest errors
-      })
+
+          // If a higher-priority layer was clicked, don't process risk click
+          if (priorityLayers) {
+            return
+          }
+
+          const graphic = response.results.find(
+            (result) => result.graphic?.layer === graphicsLayer
+          )?.graphic as Graphic | undefined
+
+          if (graphic) {
+            const item = graphic.attributes.item as RiskItem
+            const screenPoint = view.toScreen(event.mapPoint)
+            const rect = view.container.getBoundingClientRect()
+            onSelect({
+              x: rect.left + screenPoint.x,
+              y: rect.top + screenPoint.y,
+              position: event.mapPoint,
+              payload: { type: 'risk', item },
+            })
+          }
+        })
+        .catch(() => {
+          // Ignore hitTest errors
+        })
     })
 
     // Animation loop for pulsing effect
     const animate = () => {
       const time = performance.now() / 1000
       heatmapRef.current.forEach(({ graphic, baseColor, phase }) => {
-        const alpha = 0.2 + 0.6 * (1 + Math.sin(time * 2 + phase)) / 2
+        const alpha = 0.2 + (0.6 * (1 + Math.sin(time * 2 + phase))) / 2
         const rgb = hexToRgb(baseColor)
         const color = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`
 

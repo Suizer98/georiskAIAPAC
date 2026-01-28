@@ -20,7 +20,6 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-
 class ChatRequest(BaseModel):
     message: str
     uuid: Optional[str] = None
@@ -73,11 +72,7 @@ def save_message(chat_uuid: str, role: str, content: str) -> None:
     db = SessionLocal()
     try:
         now = datetime.utcnow()
-        thread = (
-            db.query(ChatThread)
-            .filter(ChatThread.uuid == chat_uuid)
-            .first()
-        )
+        thread = db.query(ChatThread).filter(ChatThread.uuid == chat_uuid).first()
         if not thread:
             thread = ChatThread(
                 uuid=chat_uuid,
@@ -141,8 +136,10 @@ def chat(request: ChatRequest):
             # If failing, try to append a hint to be sequential on retries
             current_input = request.message
             if attempt > 0:
-                current_input += " (Please execute tools one by one sequentially to avoid errors.)"
-            
+                current_input += (
+                    " (Please execute tools one by one sequentially to avoid errors.)"
+                )
+
             result = executor.invoke(
                 {"input": current_input, "chat_history": history_msgs}
             )
@@ -150,15 +147,13 @@ def chat(request: ChatRequest):
             break
         except Exception as exc:
             # Catch all exceptions including Groq BadRequestError and TypeError
-            logger.exception(
-                "agent_error attempt=%s", attempt + 1, exc_info=exc
-            )
+            logger.exception("agent_error attempt=%s", attempt + 1, exc_info=exc)
             if attempt == 2:
                 reply = (
                     "I ran into an error processing your request. "
                     "Please try asking to do one thing at a time."
                 )
-    
+
     save_message(chat_uuid, "assistant", reply)
     logger.info("agent_reply chat_uuid=%s reply=%s", chat_uuid, reply)
 
@@ -170,21 +165,16 @@ def list_or_get_chat(uuid: Optional[str] = None) -> Any:
     db = SessionLocal()
     try:
         if uuid:
-            return (
-                [
-                    ChatMessageOut.model_validate(row).model_dump()
-                    for row in (
-                        db.query(ChatMessage)
-                        .filter(ChatMessage.uuid == uuid)
-                        .order_by(ChatMessage.created_at.asc())
-                        .all()
-                    )
-                ]
-            )
-        existing_threads = {
-            row.uuid
-            for row in db.query(ChatThread.uuid).all()
-        }
+            return [
+                ChatMessageOut.model_validate(row).model_dump()
+                for row in (
+                    db.query(ChatMessage)
+                    .filter(ChatMessage.uuid == uuid)
+                    .order_by(ChatMessage.created_at.asc())
+                    .all()
+                )
+            ]
+        existing_threads = {row.uuid for row in db.query(ChatThread.uuid).all()}
         aggregates = (
             db.query(
                 ChatMessage.uuid,
@@ -204,9 +194,7 @@ def list_or_get_chat(uuid: Optional[str] = None) -> Any:
                     )
                 )
             else:
-                db.query(ChatThread).filter(
-                    ChatThread.uuid == row.uuid
-                ).update(
+                db.query(ChatThread).filter(ChatThread.uuid == row.uuid).update(
                     {
                         ChatThread.created_at: func.least(
                             ChatThread.created_at,
@@ -219,11 +207,7 @@ def list_or_get_chat(uuid: Optional[str] = None) -> Any:
                     }
                 )
         db.commit()
-        threads = (
-            db.query(ChatThread)
-            .order_by(ChatThread.updated_at.desc())
-            .all()
-        )
+        threads = db.query(ChatThread).order_by(ChatThread.updated_at.desc()).all()
         return [
             ChatSummaryOut(
                 uuid=row.uuid,
@@ -240,16 +224,8 @@ def list_or_get_chat(uuid: Optional[str] = None) -> Any:
 def delete_chat(uuid: str):
     db = SessionLocal()
     try:
-        count = (
-            db.query(ChatMessage)
-            .filter(ChatMessage.uuid == uuid)
-            .delete()
-        )
-        thread = (
-            db.query(ChatThread)
-            .filter(ChatThread.uuid == uuid)
-            .first()
-        )
+        count = db.query(ChatMessage).filter(ChatMessage.uuid == uuid).delete()
+        thread = db.query(ChatThread).filter(ChatThread.uuid == uuid).first()
         if thread:
             db.delete(thread)
         db.commit()

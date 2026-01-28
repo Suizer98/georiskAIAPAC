@@ -22,9 +22,7 @@ export const useLayerStore = create<LayerState>((set) => ({
   toggleLayer: (id) =>
     set((state) => ({
       layers: state.layers.map((layer) =>
-        layer.id === id
-          ? { ...layer, enabled: !layer.enabled }
-          : layer
+        layer.id === id ? { ...layer, enabled: !layer.enabled } : layer
       ),
     })),
   setLayer: (id, enabled) =>

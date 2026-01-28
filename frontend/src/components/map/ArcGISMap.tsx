@@ -1,4 +1,10 @@
-import { type CSSProperties, useEffect, useRef, useState, useCallback } from 'react'
+import {
+  type CSSProperties,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from 'react'
 import '@arcgis/core/assets/esri/themes/dark/main.css'
 import { useRiskStore } from '../../store/riskStore'
 import { usePriceStore } from '../../store/priceStore'
@@ -32,15 +38,20 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
   const jpmorganData = useJPMorganStore((state) => state.data)
   const fetchJPMorgan = useJPMorganStore((state) => state.fetchOffices)
   const travelAdvisoryData = useTravelAdvisoryStore((state) => state.data)
-  const fetchTravelAdvisories = useTravelAdvisoryStore((state) => state.fetchTravelAdvisories)
+  const fetchTravelAdvisories = useTravelAdvisoryStore(
+    (state) => state.fetchTravelAdvisories
+  )
   const location = useLocation()
   const isRiskRoute = location.pathname.startsWith('/risk')
-  
+
   const riskLayerEnabled = useLayerStore(
-    (state) => state.layers.find((layer) => layer.id === 'risk')?.enabled ?? true
+    (state) =>
+      state.layers.find((layer) => layer.id === 'risk')?.enabled ?? true
   )
   const travelAdvisoryLayerEnabled = useLayerStore(
-    (state) => state.layers.find((layer) => layer.id === 'travel_advisory')?.enabled ?? true
+    (state) =>
+      state.layers.find((layer) => layer.id === 'travel_advisory')?.enabled ??
+      true
   )
   const priceLayerEnabled = useLayerStore(
     (state) =>
@@ -57,7 +68,12 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
 
   useArcGISRiskLayer(viewRef, riskData, riskLayerEnabled, handleSelect)
   useArcGISPriceLayer(viewRef, priceData, priceLayerEnabled, handleSelect)
-  useArcGISJPMorganLayer(viewRef, jpmorganData, jpmorganLayerEnabled, handleSelect)
+  useArcGISJPMorganLayer(
+    viewRef,
+    jpmorganData,
+    jpmorganLayerEnabled,
+    handleSelect
+  )
   useArcGISTravelAdvisoryLayer(
     viewRef,
     travelAdvisoryData,
@@ -75,7 +91,13 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
       fetchTravelAdvisories(controller.signal)
     }
     return () => controller.abort()
-  }, [fetchRisk, fetchPrices, fetchJPMorgan, fetchTravelAdvisories, isRiskRoute])
+  }, [
+    fetchRisk,
+    fetchPrices,
+    fetchJPMorgan,
+    fetchTravelAdvisories,
+    isRiskRoute,
+  ])
 
   // Refetch when layer becomes enabled
   useEffect(() => {
@@ -134,7 +156,10 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
       const nextX = rect.left + screenPoint.x
       const nextY = rect.top + screenPoint.y
 
-      if (Math.abs(current.x - nextX) < 0.5 && Math.abs(current.y - nextY) < 0.5) {
+      if (
+        Math.abs(current.x - nextX) < 0.5 &&
+        Math.abs(current.y - nextY) < 0.5
+      ) {
         return
       }
 

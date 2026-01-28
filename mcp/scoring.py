@@ -29,7 +29,7 @@ def _get_iso2_code(country_name: str) -> str:
     country_normalized = country_name.strip()
     if country_normalized in APAC_ISO2_MAP:
         return APAC_ISO2_MAP[country_normalized]
-    
+
     # Fallback to API for other countries (but with longer timeout)
     try:
         url = f"{RESTCOUNTRIES_API_URL}/{country_name}"
@@ -40,7 +40,7 @@ def _get_iso2_code(country_name: str) -> str:
             return data[0].get("cca2", country_name[:2].upper())
     except Exception as e:
         logger.debug(f"Failed to fetch ISO2 for {country_name}: {e}")
-    
+
     # Final fallback: use first 2 letters
     return country_name[:2].upper()
 
@@ -64,7 +64,9 @@ def _clamp(value: float, minimum: float = 0.0, maximum: float = 1.0) -> float:
     return max(minimum, min(maximum, value))
 
 
-def _score_from_thresholds(value: float, thresholds: list[tuple[float, float]]) -> float:
+def _score_from_thresholds(
+    value: float, thresholds: list[tuple[float, float]]
+) -> float:
     for limit, score in thresholds:
         if value <= limit:
             return score
@@ -75,9 +77,7 @@ def score_economy(country: str) -> dict[str, Any]:
     source = "World Bank GDP per capita (NY.GDP.PCAP.CD)"
     try:
         iso2 = _get_iso2_code(country)
-        gdp_per_capita = _world_bank_indicator(
-            iso2, "NY.GDP.PCAP.CD"
-        )
+        gdp_per_capita = _world_bank_indicator(iso2, "NY.GDP.PCAP.CD")
         if gdp_per_capita is None:
             return {
                 "score": 0.5,
@@ -118,9 +118,7 @@ def score_safety(country: str) -> dict[str, Any]:
     source = "World Bank Intentional homicides (VC.IHR.PSRC.P5)"
     try:
         iso2 = _get_iso2_code(country)
-        homicide_rate = _world_bank_indicator(
-            iso2, "VC.IHR.PSRC.P5"
-        )
+        homicide_rate = _world_bank_indicator(iso2, "VC.IHR.PSRC.P5")
         if homicide_rate is None:
             return {
                 "score": 0.5,
@@ -161,7 +159,7 @@ def score_safety(country: str) -> dict[str, Any]:
 def _get_official_country_name(country: str) -> list[str]:
     """Get official country names from REST Countries API and create variations."""
     variations = [country.strip()]
-    
+
     try:
         url = f"{RESTCOUNTRIES_API_URL}/{country}"
         resp = httpx.get(url, timeout=TIMEOUT_SHORT)
@@ -173,13 +171,13 @@ def _get_official_country_name(country: str) -> list[str]:
             official_name = entry.get("name", {}).get("official", country)
             common_name = entry.get("name", {}).get("common", country)
             variations.extend([official_name, common_name])
-            
+
             # Get alternative spellings
             alt_spellings = entry.get("altSpellings", [])
             variations.extend(alt_spellings)
     except Exception as e:
         logger.debug(f"Could not fetch official name for {country}: {e}")
-    
+
     # Add manual mappings for US State Department naming conventions
     us_state_dept_mapping = {
         "China": ["China", "People's Republic of China"],
@@ -196,11 +194,11 @@ def _get_official_country_name(country: str) -> list[str]:
         "East Timor": ["East Timor", "Timor-Leste"],
         "Macedonia": ["Macedonia", "North Macedonia"],
     }
-    
+
     country_normalized = country.strip()
     if country_normalized in us_state_dept_mapping:
         variations.extend(us_state_dept_mapping[country_normalized])
-    
+
     # Remove duplicates while preserving order
     seen = set()
     unique_variations = []
@@ -209,7 +207,7 @@ def _get_official_country_name(country: str) -> list[str]:
         if v_lower not in seen:
             seen.add(v_lower)
             unique_variations.append(v)
-    
+
     return unique_variations
 
 
@@ -221,52 +219,56 @@ def score_ambassy_advice(country: str) -> dict[str, Any]:
         resp = httpx.get(api_url, timeout=TIMEOUT_STANDARD)
         resp.raise_for_status()
         advisories = resp.json()
-        
+
         if not isinstance(advisories, list):
             raise ValueError("API did not return a list of advisories")
-        
+
         # Get country name variations for matching
         country_variations = _get_official_country_name(country)
         country_lower = country.lower()
         country_variations_lower = [v.lower() for v in country_variations]
-        
+
         # Also try to get ISO2 code for Category matching
         iso2_code = _get_iso2_code(country)
-        
+
         level = None
         matched_country = None
-        
+
         # Search through advisories for matching country
         for advisory in advisories:
             title = advisory.get("Title", "")
             category = advisory.get("Category", [])
-            
+
             # Check Category field (contains ISO2 codes like ["PK"])
             if iso2_code in category:
                 # Extract level from title (e.g., "Pakistan - Level 3: Reconsider Travel")
-                match = re.search(r'Level\s+(\d+)', title, re.IGNORECASE)
+                match = re.search(r"Level\s+(\d+)", title, re.IGNORECASE)
                 if match:
                     level = int(match.group(1))
                     matched_country = title
                     break
-            
+
             # Also check if country name appears in title
             if not level:
                 title_lower = title.lower()
                 for variant_lower in country_variations_lower:
                     # Check if variant appears at the start of title (before " - Level")
-                    if title_lower.startswith(variant_lower + " -") or title_lower.startswith(variant_lower + " –"):
-                        match = re.search(r'Level\s+(\d+)', title, re.IGNORECASE)
+                    if title_lower.startswith(
+                        variant_lower + " -"
+                    ) or title_lower.startswith(variant_lower + " –"):
+                        match = re.search(r"Level\s+(\d+)", title, re.IGNORECASE)
                         if match:
                             level = int(match.group(1))
                             matched_country = title
                             break
-                
+
                 if level:
                     break
-        
+
         if level is None:
-            logger.warning(f"Could not find travel advisory level for country: {country} (tried variations: {country_variations[:5]})")
+            logger.warning(
+                f"Could not find travel advisory level for country: {country} (tried variations: {country_variations[:5]})"
+            )
             return {
                 "score": 0.5,
                 "value": None,
@@ -274,7 +276,7 @@ def score_ambassy_advice(country: str) -> dict[str, Any]:
                 "error": f"Country '{country}' not found in travel advisories. Tried variations: {', '.join(country_variations[:5])}",
                 "retrieved_at": datetime.utcnow().isoformat() + "Z",
             }
-        
+
         # Convert level to risk score (0-1 scale)
         # Level 1 = Exercise normal precautions = 0.1 (low risk)
         # Level 2 = Exercise increased caution = 0.3 (moderate risk)
@@ -286,9 +288,9 @@ def score_ambassy_advice(country: str) -> dict[str, Any]:
             3: 0.7,
             4: 1.0,
         }
-        
+
         ambassy_score = level_to_score.get(level, 0.5)
-        
+
         return {
             "score": _clamp(ambassy_score),
             "value": level,
@@ -324,9 +326,7 @@ def score_uncertainty(country: str) -> dict[str, Any]:
         resp.raise_for_status()
         payload = resp.json()
         timeline = payload.get("timeline", [])
-        total_mentions = sum(
-            float(row.get("value", 0)) for row in timeline if row
-        )
+        total_mentions = sum(float(row.get("value", 0)) for row in timeline if row)
 
         # Higher mentions = higher uncertainty = higher risk score
         uncertainty_score = _score_from_thresholds(
@@ -360,21 +360,21 @@ def score_uncertainty(country: str) -> dict[str, Any]:
 def score_military(country: str) -> dict[str, Any]:
     source = "GDELT GEO 2.0 API (Conflict Intensity)"
     try:
-        query = f'country:{country} theme:CONFLICT'
-        
+        query = f"country:{country} theme:CONFLICT"
+
         resp = httpx.get(
             GDELT_GEO_API_URL,
             params={
                 "query": query,
                 "mode": "pointdata",
                 "format": "geojson",
-                "timespan": GDELT_TIMESPAN_24H
+                "timespan": GDELT_TIMESPAN_24H,
             },
             timeout=TIMEOUT_LONG,
         )
-        
+
         if resp.status_code != 200:
-             return {
+            return {
                 "score": 0.5,
                 "value": None,
                 "source": source,
@@ -385,17 +385,17 @@ def score_military(country: str) -> dict[str, Any]:
         try:
             data = resp.json()
         except Exception:
-             return {
+            return {
                 "score": 0.5,
                 "value": None,
                 "source": source,
                 "error": "GDELT response was not valid JSON",
                 "retrieved_at": datetime.utcnow().isoformat() + "Z",
             }
-        
+
         features = data.get("features", [])
         total_events = len(features)
-        
+
         military_score = _score_from_thresholds(
             float(total_events),
             [
@@ -431,13 +431,13 @@ def score_overall(country: str) -> dict[str, Any]:
     military = score_military(country)
     uncertainty = score_uncertainty(country)
     ambassy_advice = score_ambassy_advice(country)
-    
+
     errors = [
         component["error"]
         for component in (economy, safety, military, uncertainty, ambassy_advice)
         if component.get("error")
     ]
-    
+
     risk = (
         (25.0 * military["score"])
         + (25.0 * (1.0 - economy["score"]))

@@ -36,75 +36,81 @@ export const useArcGISPriceLayer = (
     // Setup hover handler
     hoverHandlerRef.current = view.on('pointer-move', (event) => {
       if (view.destroyed || !enabled) return
-      view.hitTest(event).then((response) => {
-        if (view.destroyed || !enabled) return
-        const graphic = response.results.find(
-          (result) => result.graphic?.layer === graphicsLayer
-        )?.graphic as Graphic | undefined
+      view
+        .hitTest(event)
+        .then((response) => {
+          if (view.destroyed || !enabled) return
+          const graphic = response.results.find(
+            (result) => result.graphic?.layer === graphicsLayer
+          )?.graphic as Graphic | undefined
 
-        // Reset previous hover
-        if (hoverRef.current && hoverRef.current !== graphic) {
-          if (hoverRef.current.symbol instanceof SimpleMarkerSymbol) {
-            hoverRef.current.symbol = new SimpleMarkerSymbol({
+          // Reset previous hover
+          if (hoverRef.current && hoverRef.current !== graphic) {
+            if (hoverRef.current.symbol instanceof SimpleMarkerSymbol) {
+              hoverRef.current.symbol = new SimpleMarkerSymbol({
+                style: 'circle',
+                color: 'rgba(212, 175, 55, 0.8)', // GOLD
+                size: 12,
+                outline: {
+                  color: 'black',
+                  width: 2,
+                },
+              })
+            }
+            if (hoverRef.current.attributes?.labelGraphic) {
+              hoverRef.current.attributes.labelGraphic.visible = false
+            }
+            hoverRef.current = null
+          }
+
+          // Highlight current hover
+          if (graphic && graphic.symbol instanceof SimpleMarkerSymbol) {
+            graphic.symbol = new SimpleMarkerSymbol({
               style: 'circle',
-              color: 'rgba(212, 175, 55, 0.8)', // GOLD
-              size: 12,
+              color: 'white',
+              size: 16,
               outline: {
                 color: 'black',
                 width: 2,
               },
             })
+            if (graphic.attributes?.labelGraphic) {
+              graphic.attributes.labelGraphic.visible = true
+            }
+            hoverRef.current = graphic
           }
-          if (hoverRef.current.attributes?.labelGraphic) {
-            hoverRef.current.attributes.labelGraphic.visible = false
-          }
-          hoverRef.current = null
-        }
-
-        // Highlight current hover
-        if (graphic && graphic.symbol instanceof SimpleMarkerSymbol) {
-          graphic.symbol = new SimpleMarkerSymbol({
-            style: 'circle',
-            color: 'white',
-            size: 16,
-            outline: {
-              color: 'black',
-              width: 2,
-            },
-          })
-          if (graphic.attributes?.labelGraphic) {
-            graphic.attributes.labelGraphic.visible = true
-          }
-          hoverRef.current = graphic
-        }
-      }).catch(() => {
-        // Ignore hitTest errors
-      })
+        })
+        .catch(() => {
+          // Ignore hitTest errors
+        })
     })
 
     // Setup click handler
     clickHandlerRef.current = view.on('click', (event) => {
       if (view.destroyed || !enabled) return
-      view.hitTest(event).then((response) => {
-        if (view.destroyed || !enabled) return
-        const graphic = response.results.find(
-          (result) => result.graphic?.layer === graphicsLayer
-        )?.graphic as Graphic | undefined
+      view
+        .hitTest(event)
+        .then((response) => {
+          if (view.destroyed || !enabled) return
+          const graphic = response.results.find(
+            (result) => result.graphic?.layer === graphicsLayer
+          )?.graphic as Graphic | undefined
 
-        if (graphic) {
-          const item = graphic.attributes.item as PriceItem
-          const screenPoint = view.toScreen(event.mapPoint)
-          const rect = view.container.getBoundingClientRect()
-          onSelect({
-            x: rect.left + screenPoint.x,
-            y: rect.top + screenPoint.y,
-            position: event.mapPoint,
-            payload: { type: 'price', item },
-          })
-        }
-      }).catch(() => {
-        // Ignore hitTest errors
-      })
+          if (graphic) {
+            const item = graphic.attributes.item as PriceItem
+            const screenPoint = view.toScreen(event.mapPoint)
+            const rect = view.container.getBoundingClientRect()
+            onSelect({
+              x: rect.left + screenPoint.x,
+              y: rect.top + screenPoint.y,
+              position: event.mapPoint,
+              payload: { type: 'price', item },
+            })
+          }
+        })
+        .catch(() => {
+          // Ignore hitTest errors
+        })
     })
 
     return () => {

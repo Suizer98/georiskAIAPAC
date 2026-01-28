@@ -80,7 +80,7 @@ const APAC_OFFICES: JPMorganOffice[] = [
     country: 'South Korea',
     address: '23F, Seoul Finance Center, 84 Taepyeongno 1-ga, Jung-gu',
     latitude: 37.5665,
-    longitude: 126.9780,
+    longitude: 126.978,
     office_type: 'Investment Banking',
   },
   {

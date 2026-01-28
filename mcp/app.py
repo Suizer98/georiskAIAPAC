@@ -22,14 +22,10 @@ def startup():
     logging.getLogger(__name__).info("risk_data_count_on_startup=%s", count)
     if count == 0:
         summary = seed_data()
-        logging.getLogger(__name__).info(
-            "seed_data_on_startup summary=%s", summary
-        )
+        logging.getLogger(__name__).info("seed_data_on_startup summary=%s", summary)
         db = SessionLocal()
         try:
             count_after = db.query(RiskData.id).count()
         finally:
             db.close()
-        logging.getLogger(__name__).info(
-            "risk_data_count_after_seed=%s", count_after
-        )
+        logging.getLogger(__name__).info("risk_data_count_after_seed=%s", count_after)

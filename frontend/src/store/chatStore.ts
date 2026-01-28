@@ -52,8 +52,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sendingMessage: false,
   sendingChatUuid: null,
   setDrawerOpened: (opened) => set({ drawerOpened: opened }),
-  toggleDrawer: () =>
-    set((state) => ({ drawerOpened: !state.drawerOpened })),
+  toggleDrawer: () => set((state) => ({ drawerOpened: !state.drawerOpened })),
   fetchChats: async (signal) => {
     if (get().loadingChats) {
       return
@@ -110,9 +109,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   fetchChatMessages: async (uuid, signal) => {
     set({ loadingMessages: true, messageError: null })
     try {
-      const response = await fetch(`/api/chat?uuid=${encodeURIComponent(uuid)}`, {
-        signal,
-      })
+      const response = await fetch(
+        `/api/chat?uuid=${encodeURIComponent(uuid)}`,
+        {
+          signal,
+        }
+      )
       if (!response.ok) {
         throw new Error(`Failed to load chat (${response.status})`)
       }
@@ -211,8 +213,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         chats: nextChats,
         activeChatUuid:
           state.activeChatUuid === uuid ? null : state.activeChatUuid,
-        chatMessages:
-          state.activeChatUuid === uuid ? [] : state.chatMessages,
+        chatMessages: state.activeChatUuid === uuid ? [] : state.chatMessages,
       })
     } catch (error) {
       set({ chatError: 'Unable to delete chat.' })

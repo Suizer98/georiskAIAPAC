@@ -14,7 +14,7 @@ export const useArcGISJPMorganLayer = (
   onSelect: (data: MapPopupSelection | null) => void
 ) => {
   const graphicsLayerRef = useRef<GraphicsLayer | null>(null)
-  
+
   const hoverRef = useRef<Graphic | null>(null)
   const hoverHandlerRef = useRef<any>(null)
   const clickHandlerRef = useRef<any>(null)
@@ -35,68 +35,74 @@ export const useArcGISJPMorganLayer = (
 
     hoverHandlerRef.current = view.on('pointer-move', (event) => {
       if (view.destroyed) return
-      view.hitTest(event).then((response) => {
-        if (view.destroyed) return
-        const graphic = response.results.find(
-          (result) => result.graphic?.layer === graphicsLayer
-        )?.graphic as Graphic | undefined
+      view
+        .hitTest(event)
+        .then((response) => {
+          if (view.destroyed) return
+          const graphic = response.results.find(
+            (result) => result.graphic?.layer === graphicsLayer
+          )?.graphic as Graphic | undefined
 
-        if (hoverRef.current && hoverRef.current !== graphic) {
-          if (hoverRef.current.symbol instanceof SimpleMarkerSymbol) {
-            hoverRef.current.symbol = new SimpleMarkerSymbol({
+          if (hoverRef.current && hoverRef.current !== graphic) {
+            if (hoverRef.current.symbol instanceof SimpleMarkerSymbol) {
+              hoverRef.current.symbol = new SimpleMarkerSymbol({
+                style: 'circle',
+                color: 'rgba(0, 102, 204, 0.8)', // JP Morgan blue
+                size: 14,
+                outline: {
+                  color: 'white',
+                  width: 2,
+                },
+              })
+            }
+            if (hoverRef.current.attributes?.labelGraphic) {
+              hoverRef.current.attributes.labelGraphic.visible = false
+            }
+            hoverRef.current = null
+          }
+
+          if (graphic && graphic.symbol instanceof SimpleMarkerSymbol) {
+            graphic.symbol = new SimpleMarkerSymbol({
               style: 'circle',
-              color: 'rgba(0, 102, 204, 0.8)', // JP Morgan blue
-              size: 14,
+              color: 'rgba(0, 102, 204, 1)', // Brighter blue on hover
+              size: 18,
               outline: {
                 color: 'white',
-                width: 2,
+                width: 3,
               },
             })
+            if (graphic.attributes?.labelGraphic) {
+              graphic.attributes.labelGraphic.visible = true
+            }
+            hoverRef.current = graphic
           }
-          if (hoverRef.current.attributes?.labelGraphic) {
-            hoverRef.current.attributes.labelGraphic.visible = false
-          }
-          hoverRef.current = null
-        }
-
-        if (graphic && graphic.symbol instanceof SimpleMarkerSymbol) {
-          graphic.symbol = new SimpleMarkerSymbol({
-            style: 'circle',
-            color: 'rgba(0, 102, 204, 1)', // Brighter blue on hover
-            size: 18,
-            outline: {
-              color: 'white',
-              width: 3,
-            },
-          })
-          if (graphic.attributes?.labelGraphic) {
-            graphic.attributes.labelGraphic.visible = true
-          }
-          hoverRef.current = graphic
-        }
-      }).catch(() => {})
+        })
+        .catch(() => {})
     })
 
     clickHandlerRef.current = view.on('click', (event) => {
       if (view.destroyed) return
-      view.hitTest(event).then((response) => {
-        if (view.destroyed) return
-        const graphic = response.results.find(
-          (result) => result.graphic?.layer === graphicsLayer
-        )?.graphic as Graphic | undefined
+      view
+        .hitTest(event)
+        .then((response) => {
+          if (view.destroyed) return
+          const graphic = response.results.find(
+            (result) => result.graphic?.layer === graphicsLayer
+          )?.graphic as Graphic | undefined
 
-        if (graphic) {
-          const office = graphic.attributes.office as JPMorganOffice
-          const screenPoint = view.toScreen(event.mapPoint)
-          const rect = view.container.getBoundingClientRect()
-          onSelect({
-            x: rect.left + screenPoint.x,
-            y: rect.top + screenPoint.y,
-            position: event.mapPoint,
-            payload: { type: 'jpmorgan', office },
-          })
-        }
-      }).catch(() => {})
+          if (graphic) {
+            const office = graphic.attributes.office as JPMorganOffice
+            const screenPoint = view.toScreen(event.mapPoint)
+            const rect = view.container.getBoundingClientRect()
+            onSelect({
+              x: rect.left + screenPoint.x,
+              y: rect.top + screenPoint.y,
+              position: event.mapPoint,
+              payload: { type: 'jpmorgan', office },
+            })
+          }
+        })
+        .catch(() => {})
     })
 
     return () => {
