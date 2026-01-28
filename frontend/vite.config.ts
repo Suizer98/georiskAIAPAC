@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import cesium from 'vite-plugin-cesium'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -9,10 +8,13 @@ export default defineConfig(({ mode }) => {
   const agentTarget = env.VITE_BACKEND_AGENT || 'http://localhost:7000'
 
   return {
-    plugins: [react(), cesium()],
+    plugins: [react()],
     server: {
       port: 3000,
       host: true,
+      fs: {
+        allow: ['..'],
+      },
       proxy: {
         '/api/chat': {
           target: agentTarget,
@@ -24,5 +26,12 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    optimizeDeps: {
+      exclude: ['@arcgis/core'],
+    },
+    build: {
+      target: 'esnext',
+    },
+    assetsInclude: ['**/*.wasm'],
   }
 })

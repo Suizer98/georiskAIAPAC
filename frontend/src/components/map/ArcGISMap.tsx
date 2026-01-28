@@ -1,21 +1,24 @@
 import { type CSSProperties, useEffect, useRef, useState, useCallback } from 'react'
-import 'cesium/Build/Cesium/Widgets/widgets.css'
+import '@arcgis/core/assets/esri/themes/dark/main.css'
 import { useRiskStore } from '../../store/riskStore'
 import { usePriceStore } from '../../store/priceStore'
+import { useJPMorganStore } from '../../store/jpmorganStore'
 import { useLayerStore } from '../../store/layerStore'
-import { useCesiumViewer } from './useCesiumViewer'
-import { useRiskLayer } from './useRiskLayer'
-import { usePriceLayer } from './usePriceLayer'
+import { useArcGISViewer } from './useArcGISViewer'
+import { useArcGISRiskLayer } from './useArcGISRiskLayer'
+import { useArcGISPriceLayer } from './useArcGISPriceLayer'
+import { useArcGISJPMorganLayer } from './useArcGISJPMorganLayer'
+import LayerListWidget from './LayerListWidget'
 import MapPopup, { type MapPopupSelection } from './MapPopup'
 
-type CesiumMapProps = {
+type ArcGISMapProps = {
   className?: string
   style?: CSSProperties
 }
 
-export default function CesiumMap({ className, style }: CesiumMapProps) {
+export default function ArcGISMap({ className, style }: ArcGISMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const viewerRef = useCesiumViewer(containerRef)
+  const viewRef = useArcGISViewer(containerRef)
   const [popupData, setPopupData] = useState<MapPopupSelection | null>(null)
   const popupRef = useRef<MapPopupSelection | null>(null)
 
@@ -23,6 +26,8 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
   const fetchRisk = useRiskStore((state) => state.fetchRisk)
   const priceData = usePriceStore((state) => state.data)
   const fetchPrices = usePriceStore((state) => state.fetchPrices)
+  const jpmorganData = useJPMorganStore((state) => state.data)
+  const fetchJPMorgan = useJPMorganStore((state) => state.fetchOffices)
   const riskLayerEnabled = useLayerStore(
     (state) => state.layers.find((layer) => layer.id === 'risk')?.enabled ?? true
   )
@@ -30,21 +35,27 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
     (state) =>
       state.layers.find((layer) => layer.id === 'price')?.enabled ?? false
   )
+  const jpmorganLayerEnabled = useLayerStore(
+    (state) =>
+      state.layers.find((layer) => layer.id === 'jpmorgan')?.enabled ?? false
+  )
 
   const handleSelect = useCallback((data: MapPopupSelection | null) => {
     setPopupData(data)
   }, [])
 
-  useRiskLayer(viewerRef, riskData, riskLayerEnabled, handleSelect)
-  usePriceLayer(viewerRef, priceData, priceLayerEnabled, handleSelect)
+  useArcGISRiskLayer(viewRef, riskData, riskLayerEnabled, handleSelect)
+  useArcGISPriceLayer(viewRef, priceData, priceLayerEnabled, handleSelect)
+  useArcGISJPMorganLayer(viewRef, jpmorganData, jpmorganLayerEnabled, handleSelect)
 
   // Initial fetch on mount
   useEffect(() => {
     const controller = new AbortController()
     fetchRisk(controller.signal)
     fetchPrices(controller.signal)
+    fetchJPMorgan(controller.signal)
     return () => controller.abort()
-  }, [fetchRisk, fetchPrices])
+  }, [fetchRisk, fetchPrices, fetchJPMorgan])
 
   // Refetch when layer becomes enabled
   useEffect(() => {
@@ -64,13 +75,21 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
   }, [priceLayerEnabled, fetchPrices])
 
   useEffect(() => {
+    const controller = new AbortController()
+    if (jpmorganLayerEnabled) {
+      fetchJPMorgan(controller.signal)
+    }
+    return () => controller.abort()
+  }, [jpmorganLayerEnabled, fetchJPMorgan])
+
+  useEffect(() => {
     popupRef.current = popupData
   }, [popupData])
 
   useEffect(() => {
     const updatePopupPosition = () => {
-      const viewer = viewerRef.current
-      if (!viewer) {
+      const view = viewRef.current
+      if (!view) {
         return
       }
       const current = popupRef.current
@@ -78,16 +97,14 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
         return
       }
 
-      const canvasPosition = viewer.scene.cartesianToCanvasCoordinates(
-        current.position
-      )
-      if (!canvasPosition) {
+      const screenPoint = view.toScreen(current.position)
+      if (!screenPoint) {
         return
       }
 
-      const rect = viewer.scene.canvas.getBoundingClientRect()
-      const nextX = rect.left + canvasPosition.x
-      const nextY = rect.top + canvasPosition.y
+      const rect = view.container.getBoundingClientRect()
+      const nextX = rect.left + screenPoint.x
+      const nextY = rect.top + screenPoint.y
 
       if (Math.abs(current.x - nextX) < 0.5 && Math.abs(current.y - nextY) < 0.5) {
         return
@@ -100,20 +117,30 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
       })
     }
 
-    const viewer = viewerRef.current
-    if (!viewer) {
+    const view = viewRef.current
+    if (!view) {
       return
     }
 
-    viewer.scene.postRender.addEventListener(updatePopupPosition)
-    return () => {
-      const currentViewer = viewerRef.current
-      if (!currentViewer || currentViewer.isDestroyed()) {
-        return
+    const watchHandle = view.watch('stationary', () => {
+      if (view.stationary) {
+        updatePopupPosition()
       }
-      currentViewer.scene.postRender.removeEventListener(updatePopupPosition)
+    })
+
+    const animationHandle = view.watch('animation', () => {
+      updatePopupPosition()
+    })
+
+    // Also update on view changes
+    const updateInterval = setInterval(updatePopupPosition, 100)
+
+    return () => {
+      watchHandle.remove()
+      animationHandle.remove()
+      clearInterval(updateInterval)
     }
-  }, [viewerRef])
+  }, [viewRef])
 
   return (
     <div
@@ -125,6 +152,7 @@ export default function CesiumMap({ className, style }: CesiumMapProps) {
         ...style,
       }}
     >
+      <LayerListWidget />
       {popupData && (
         <MapPopup
           x={popupData.x}

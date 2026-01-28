@@ -49,7 +49,6 @@ services:
     ports:
       - "3000:3000"
     environment:
-      VITE_CESIUM_ION_TOKEN: ${VITE_CESIUM_ION_TOKEN}
       VITE_BACKEND_MCP: http://mcp:8000
       VITE_BACKEND_AGENT: http://agent:7000
     depends_on:

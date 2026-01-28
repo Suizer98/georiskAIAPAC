@@ -6,15 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "postbuild": "node scripts/copy-arcgis-assets.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@arcgis/core": "^4.32.0",
     "@radix-ui/react-dialog": "^1.1.4",
+    "@radix-ui/react-dropdown-menu": "^2.1.4",
     "@radix-ui/react-icons": "^1.3.2",
     "@radix-ui/react-popover": "^1.1.4",
     "@radix-ui/react-scroll-area": "^1.2.1",
-    "cesium": "^1.122.0",
+    "@radix-ui/react-separator": "^1.1.1",
+    "@radix-ui/react-tabs": "^1.1.1",
+    "@radix-ui/react-tooltip": "^1.1.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.27.0",
@@ -35,8 +40,7 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "vite": "npm:rolldown-vite@7.2.5",
-    "vite-plugin-cesium": "^1.2.0"
+    "vite": "npm:rolldown-vite@7.2.5"
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.2.5"

@@ -1,17 +1,19 @@
 import React from 'react'
-import type { Cartesian3 } from 'cesium'
+import Point from '@arcgis/core/geometry/Point'
 import * as Popover from '@radix-ui/react-popover'
 import type { PriceItem } from '../../store/priceStore'
 import type { RiskItem } from '../../store/riskStore'
+import type { JPMorganOffice } from '../../store/jpmorganStore'
 
 export type MapPopupPayload =
   | { type: 'price'; item: PriceItem }
   | { type: 'risk'; item: RiskItem }
+  | { type: 'jpmorgan'; office: JPMorganOffice }
 
 export type MapPopupSelection = {
   x: number
   y: number
-  position?: Cartesian3
+  position?: Point
   payload: MapPopupPayload
 }
 
@@ -114,12 +116,49 @@ const RiskPopupContent = ({ item }: { item: RiskItem }) => {
   )
 }
 
+const JPMorganPopupContent = ({ office }: { office: JPMorganOffice }) => {
+  return (
+    <div className="space-y-2">
+      <div className="text-lg font-bold">JP Morgan Office</div>
+      <div className="space-y-1 text-sm">
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-400">City</span>
+          <span className="font-mono text-gray-200">{office.city}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-400">Country</span>
+          <span className="font-mono text-gray-200">{office.country}</span>
+        </div>
+        <div className="my-1 h-px bg-gray-700" />
+        <div className="space-y-1">
+          <span className="text-gray-400 text-xs">Address</span>
+          <div className="font-mono text-xs text-gray-300">{office.address}</div>
+        </div>
+        {office.office_type && (
+          <div className="flex justify-between gap-4">
+            <span className="text-gray-400">Type</span>
+            <span className="font-mono text-gray-200">{office.office_type}</span>
+          </div>
+        )}
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-400">Coordinates</span>
+          <span className="font-mono text-xs text-gray-400">
+            {office.latitude.toFixed(4)}, {office.longitude.toFixed(4)}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function MapPopup({ x, y, payload, onClose }: MapPopupProps) {
   const content =
     payload.type === 'price' ? (
       <PricePopupContent item={payload.item} />
-    ) : (
+    ) : payload.type === 'risk' ? (
       <RiskPopupContent item={payload.item} />
+    ) : (
+      <JPMorganPopupContent office={payload.office} />
     )
 
   return (

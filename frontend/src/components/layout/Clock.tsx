@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import * as Popover from '@radix-ui/react-popover'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 
 type Timezone = {
   id: string
@@ -74,8 +74,8 @@ export default function Clock() {
   const currentTzLabel = getTimezoneLabel(timezone)
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger asChild>
+    <DropdownMenu.Root open={open} onOpenChange={setOpen}>
+      <DropdownMenu.Trigger asChild>
         <button
           type="button"
           className="flex flex-col items-end text-right cursor-pointer hover:opacity-80 transition-opacity"
@@ -90,39 +90,37 @@ export default function Clock() {
           <div className="text-xs text-slate-400">{dateStr}</div>
           <div className="text-xs text-slate-500 mt-0.5">{currentTzLabel}</div>
         </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
           side="bottom"
           align="end"
           sideOffset={8}
           className="z-50 min-w-[200px] max-w-xs rounded-lg border border-white/10 bg-slate-900/95 p-2 text-white shadow-xl backdrop-blur-md"
         >
-          <div className="text-xs font-medium text-slate-400 px-2 py-1.5 mb-1">
+          <DropdownMenu.Label className="text-xs font-medium text-slate-400 px-2 py-1.5 mb-1">
             Select Timezone
-          </div>
+          </DropdownMenu.Label>
           <div className="max-h-64 overflow-y-auto">
             {APAC_TIMEZONES.map((tz) => (
-              <button
+              <DropdownMenu.Item
                 key={tz.id}
-                type="button"
-                onClick={() => {
+                onSelect={() => {
                   setTimezone(tz.tz)
                   setOpen(false)
                 }}
-                className={`w-full text-left px-3 py-2 text-sm rounded-md transition ${
+                className={`w-full text-left px-3 py-2 text-sm rounded-md transition cursor-pointer outline-none ${
                   timezone === tz.tz
                     ? 'bg-indigo-500/20 text-indigo-100'
-                    : 'hover:bg-white/10 text-white'
+                    : 'hover:bg-white/10 text-white focus:bg-white/10'
                 }`}
               >
                 {tz.label}
-              </button>
+              </DropdownMenu.Item>
             ))}
           </div>
-          <Popover.Arrow className="fill-slate-900/95" />
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   )
 }
