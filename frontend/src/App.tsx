@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import * as Toast from '@radix-ui/react-toast'
 import ChatDrawer from './components/layout/ChatDrawer'
 import MapBackground from './components/layout/MapBackground'
 import TopBar from './components/layout/TopBar'
@@ -9,8 +10,7 @@ import { useLayerStore } from './store/layerStore'
 
 function App() {
   const lastEvent = useRiskStore((state) => state.lastEvent)
-  const [showToast, setShowToast] = useState(false)
-  const toastTimer = useRef<number | null>(null)
+  const [open, setOpen] = useState(false)
   const location = useLocation()
   const setLayer = useLayerStore((state) => state.setLayer)
 
@@ -29,39 +29,37 @@ function App() {
     }
     setLayer('price', false)
     setLayer('risk', true)
-    setLayer('travel_advisory', true) // Enable Travel Advisory with risk layer
-    setLayer('jpmorgan', true) // Enable JP Morgan with risk layer
+    setLayer('travel_advisory', true)
+    setLayer('jpmorgan', true)
   }, [location.pathname, setLayer])
 
   useEffect(() => {
-    if (!lastEvent) {
-      return
-    }
-    setShowToast(true)
-    if (toastTimer.current) {
-      window.clearTimeout(toastTimer.current)
-    }
-    toastTimer.current = window.setTimeout(() => {
-      setShowToast(false)
-    }, 3000)
+    if (!lastEvent) return
+    setOpen(true)
   }, [lastEvent?.at, lastEvent?.id, lastEvent?.type])
 
   return (
-    <div>
-      <MapBackground />
-      <TopBar />
-      <ChatDrawer />
-      <Routes>
-        <Route path="/" element={<Navigate to="/risk" replace />} />
-        <Route path="/risk" element={null} />
-        <Route path="/price" element={null} />
-      </Routes>
-      {showToast ? (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-slate-900/90 px-4 py-3 text-sm text-white shadow-lg">
-          Risk score updated just now.
-        </div>
-      ) : null}
-    </div>
+    <Toast.Provider duration={3000} swipeDirection="up">
+      <div>
+        <MapBackground />
+        <TopBar />
+        <ChatDrawer />
+        <Routes>
+          <Route path="/" element={<Navigate to="/risk" replace />} />
+          <Route path="/risk" element={null} />
+          <Route path="/price" element={null} />
+        </Routes>
+      </div>
+      <Toast.Root
+        open={open}
+        onOpenChange={setOpen}
+        className="fixed left-1/2 top-28 z-50 -translate-x-1/2 rounded-xl border border-slate-200 bg-white px-8 py-5 text-base font-medium text-slate-800 shadow-xl transition-[opacity,transform] duration-200 data-[state=closed]:translate-y-[-100%] data-[state=closed]:opacity-0"
+      >
+        <Toast.Title className="sr-only">Risk updated</Toast.Title>
+        <Toast.Description>Risk score updated.</Toast.Description>
+      </Toast.Root>
+      <Toast.Viewport className="fixed inset-0 z-[100] flex justify-center pt-28 outline-none pointer-events-none [&>*]:pointer-events-auto" />
+    </Toast.Provider>
   )
 }
 
