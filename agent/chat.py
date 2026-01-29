@@ -133,7 +133,6 @@ def chat(request: ChatRequest):
     reply = ""
     for attempt in range(3):
         try:
-            # If failing, try to append a hint to be sequential on retries
             current_input = request.message
             if attempt > 0:
                 current_input += (
@@ -146,7 +145,6 @@ def chat(request: ChatRequest):
             reply = result.get("output", "")
             break
         except Exception as exc:
-            # Catch all exceptions including Groq BadRequestError and TypeError
             logger.exception("agent_error attempt=%s", attempt + 1, exc_info=exc)
             if attempt == 2:
                 reply = (

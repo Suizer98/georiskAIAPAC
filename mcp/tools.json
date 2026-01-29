@@ -171,5 +171,21 @@
       "description": "List available MCP tools",
       "request": { "method": "GET", "path": "/api/tools" }
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "map_zoom_to_place",
+      "description": "Ask the frontend map to zoom to a place. Pass 'place' (e.g. Singapore, Jakarta) for APAC names in the backend map; if the place is not in the map, pass 'latitude' and 'longitude' instead.",
+      "request": { "method": "POST", "path": "/api/map-actions" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "place": { "type": "string", "description": "Place name (APAC country or city in map)" },
+          "latitude": { "type": "number", "description": "Latitude (use when place not in map)" },
+          "longitude": { "type": "number", "description": "Longitude (use when place not in map)" }
+        }
+      }
+    }
   }
 ]

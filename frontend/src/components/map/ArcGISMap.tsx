@@ -16,6 +16,7 @@ import { useArcGISRiskLayer } from './useArcGISRiskLayer'
 import { useArcGISPriceLayer } from './useArcGISPriceLayer'
 import { useArcGISJPMorganLayer } from './useArcGISJPMorganLayer'
 import { useArcGISTravelAdvisoryLayer } from './useArcGISTravelAdvisoryLayer'
+import { useMapActions } from './useMapActions'
 import { useLocation } from 'react-router-dom'
 import LayerListWidget from './LayerListWidget'
 import MapPopup, { type MapPopupSelection } from './MapPopup'
@@ -80,26 +81,18 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
     isRiskRoute && travelAdvisoryLayerEnabled,
     handleSelect
   )
+  useMapActions(viewRef)
 
-  // Initial fetch on mount
   useEffect(() => {
     const controller = new AbortController()
-    fetchRisk(controller.signal)
     fetchPrices(controller.signal)
     fetchJPMorgan(controller.signal)
     if (isRiskRoute) {
       fetchTravelAdvisories(controller.signal)
     }
     return () => controller.abort()
-  }, [
-    fetchRisk,
-    fetchPrices,
-    fetchJPMorgan,
-    fetchTravelAdvisories,
-    isRiskRoute,
-  ])
+  }, [fetchPrices, fetchJPMorgan, fetchTravelAdvisories, isRiskRoute])
 
-  // Refetch when layer becomes enabled
   useEffect(() => {
     const controller = new AbortController()
     if (riskLayerEnabled) {
@@ -185,7 +178,6 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
       updatePopupPosition()
     })
 
-    // Also update on view changes
     const updateInterval = setInterval(updatePopupPosition, 100)
 
     return () => {

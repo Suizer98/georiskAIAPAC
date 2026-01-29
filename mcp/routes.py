@@ -31,6 +31,7 @@ from constant import (
     HTTP_QUEUE_MAXSIZE,
     APAC_COUNTRIES,
     CACHE_TTL,
+    PLACE_TO_COORDINATES,
 )
 
 router = APIRouter()
@@ -49,6 +50,18 @@ def load_tools() -> list[dict]:
 
 TOOLS = load_tools()
 _risk_subscribers: list[asyncio.Queue[str]] = []
+
+_map_actions_pending: list[dict[str, Any]] = []
+_map_action_subscribers: list[asyncio.Queue[str]] = []
+
+
+async def _broadcast_map_action(action: dict) -> None:
+    payload = f"data: {json.dumps(action)}\n\n"
+    for q in list(_map_action_subscribers):
+        try:
+            q.put_nowait(payload)
+        except asyncio.QueueFull:
+            continue
 
 
 async def _broadcast_risk_event(event: dict) -> None:
@@ -191,14 +204,72 @@ def search_web(query: str):
         )
         return payload
     except Exception as e:
-        # Fallback or error handling
         logger.exception("web_search_error query=%s", query)
-        return [{"title": "Error", "body": f"Search failed: {str(e)}"}]
+        return [{"title": "Error", "body": str(e)}]
 
 
 @router.get("/api/tools")
 def list_tools():
     return load_tools()
+
+
+@router.get("/api/map-actions/events")
+async def map_action_events():
+    queue: asyncio.Queue[str] = asyncio.Queue(maxsize=HTTP_QUEUE_MAXSIZE)
+    _map_action_subscribers.append(queue)
+
+    async def gen():
+        try:
+            while True:
+                msg = await queue.get()
+                yield msg
+        except asyncio.CancelledError:
+            raise
+        finally:
+            if queue in _map_action_subscribers:
+                _map_action_subscribers.remove(queue)
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+def _place_to_center(place: str) -> tuple[float, float] | None:
+    key = place.strip().lower().replace("  ", " ")
+    return PLACE_TO_COORDINATES.get(key)
+
+
+@router.post("/api/map-actions")
+async def post_map_actions(request: Request):
+    body = await request.json()
+    place = body.get("place")
+    lat, lon = body.get("latitude"), body.get("longitude")
+
+    if place and str(place).strip():
+        center = _place_to_center(str(place).strip())
+        if center is not None:
+            lat, lon = center
+    if lat is None or lon is None:
+        raise HTTPException(
+            status_code=400,
+            detail="pass 'place' (APAC name in map) or 'latitude' and 'longitude'",
+        )
+    try:
+        latitude = float(lat)
+        longitude = float(lon)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=400, detail="latitude and longitude must be numbers"
+        )
+    action = {"type": "zoom_to_place", "center": [longitude, latitude]}
+    _map_actions_pending.append(action)
+    await _broadcast_map_action(action)
+    return {"ok": True}
+
+
+@router.get("/api/map-actions")
+def get_map_actions():
+    out = list(_map_actions_pending)
+    _map_actions_pending.clear()
+    return {"actions": out}
 
 
 @router.get("/api/score/military")

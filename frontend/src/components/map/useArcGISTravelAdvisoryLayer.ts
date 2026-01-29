@@ -8,19 +8,18 @@ import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol'
 import type { TravelAdvisoryItem } from '../../store/travelAdvisoryStore'
 import type { MapPopupSelection } from './MapPopup'
 
-// Color mapping for travel advisory levels
 const LEVEL_COLORS: Record<number, string> = {
-  1: '#22c55e', // Green - Exercise normal precautions
-  2: '#eab308', // Yellow - Exercise increased caution
-  3: '#f97316', // Orange - Reconsider travel
-  4: '#ef4444', // Red - Do not travel
+  1: '#22c55e',
+  2: '#eab308',
+  3: '#f97316',
+  4: '#ef4444',
 }
 
 const getLevelColor = (level: number | null): string => {
   if (level === null || level < 1 || level > 4) {
-    return '#6b7280' // Gray for unknown/no data
+    return '#6b7280'
   }
-  return LEVEL_COLORS[level] || '#6b7280'
+  return LEVEL_COLORS[level] ?? '#6b7280'
 }
 
 export const useArcGISTravelAdvisoryLayer = (
@@ -35,7 +34,6 @@ export const useArcGISTravelAdvisoryLayer = (
   const clickHandlerRef = useRef<any>(null)
   const hoverRef = useRef<Graphic | null>(null)
 
-  // Set layer title for LayerList widget
   useEffect(() => {
     if (graphicsLayerRef.current) {
       graphicsLayerRef.current.title = 'Travel Advisory Levels'
@@ -48,18 +46,14 @@ export const useArcGISTravelAdvisoryLayer = (
       return
     }
 
-    // Create graphics layer with title
-    // Add it at the bottom so it appears behind other layers
     const graphicsLayer = new GraphicsLayer({
       title: 'Travel Advisory Levels',
-      opacity: 0.7, // Slightly transparent so other layers show through
+      opacity: 0.7,
     })
     view.map.add(graphicsLayer)
-    // Move to bottom of layer stack
     view.map.reorder(graphicsLayer, 0)
     graphicsLayerRef.current = graphicsLayer
 
-    // Setup hover handler to show popup
     if (onSelect) {
       hoverHandlerRef.current = view.on('pointer-move', (event: any) => {
         if (view.destroyed) return
@@ -71,7 +65,6 @@ export const useArcGISTravelAdvisoryLayer = (
               (result: any) => result.graphic?.layer === graphicsLayer
             )?.graphic as Graphic | undefined
 
-            // If hovering over a different graphic, update popup
             if (graphic && graphic !== hoverRef.current) {
               const item = graphic.attributes?.item as
                 | TravelAdvisoryItem
@@ -88,17 +81,13 @@ export const useArcGISTravelAdvisoryLayer = (
                 hoverRef.current = graphic
               }
             } else if (!graphic && hoverRef.current) {
-              // Mouse moved away from any graphic, hide popup
               onSelect(null)
               hoverRef.current = null
             }
           })
-          .catch(() => {
-            // Ignore hitTest errors
-          })
+          .catch(() => {})
       })
 
-      // Setup click handler to show popup
       clickHandlerRef.current = view.on('click', (event: any) => {
         if (view.destroyed) return
         view
@@ -125,9 +114,7 @@ export const useArcGISTravelAdvisoryLayer = (
               }
             }
           })
-          .catch(() => {
-            // Ignore hitTest errors
-          })
+          .catch(() => {})
       })
     }
 
@@ -144,9 +131,7 @@ export const useArcGISTravelAdvisoryLayer = (
       if (currentView && !currentView.destroyed && graphicsLayerRef.current) {
         try {
           currentView.map.remove(graphicsLayerRef.current)
-        } catch {
-          // ignore cleanup errors
-        }
+        } catch {}
       }
       graphicsLayerRef.current = null
       countryGraphicsRef.current.clear()
@@ -168,13 +153,10 @@ export const useArcGISTravelAdvisoryLayer = (
       return
     }
 
-    // Fetch country boundaries and render them
     const loadCountryBoundaries = async () => {
-      // Remove existing graphics
       graphicsLayer.removeAll()
       countryGraphicsRef.current.clear()
 
-      // Country name to ISO3 code mapping for GeoJSON matching
       const countryToISO3: Record<string, string> = {
         Australia: 'AUS',
         Brunei: 'BRN',
@@ -196,7 +178,6 @@ export const useArcGISTravelAdvisoryLayer = (
         Vietnam: 'VNM',
       }
 
-      // Country name to ISO2 code mapping for fallback matching
       const countryToISO2: Record<string, string> = {
         Australia: 'AU',
         Brunei: 'BN',
@@ -221,8 +202,6 @@ export const useArcGISTravelAdvisoryLayer = (
       let successCount = 0
       let errorCount = 0
 
-      // CDN (GitHub raw often fails: ERR_CONNECTION_RESET)
-      // 'https://raw.githubusercontent.com/datasets/geo-countries/main/data/countries.geojson'
       const worldGeoJsonUrl =
         'https://cdn.jsdelivr.net/gh/datasets/geo-countries@main/data/countries.geojson'
 
@@ -243,7 +222,6 @@ export const useArcGISTravelAdvisoryLayer = (
         return
       }
 
-      // Process each travel advisory item
       for (const item of travelAdvisoryData) {
         if (!item.country) continue
 
@@ -254,10 +232,8 @@ export const useArcGISTravelAdvisoryLayer = (
             continue
           }
 
-          // Find matching country in world GeoJSON
           const iso2 = countryToISO2[item.country]
           const countryFeature = worldGeoJson.features.find((feature: any) => {
-            // Match by ISO3 code (id field) - check both string and number
             if (
               feature.id === iso3 ||
               feature.id === iso3.toLowerCase() ||
@@ -265,8 +241,6 @@ export const useArcGISTravelAdvisoryLayer = (
             ) {
               return true
             }
-
-            // Match by ISO2 code in id (some sources like johan/world.geo.json use alpha-2 in id)
             if (
               iso2 &&
               (feature.id === iso2 ||
@@ -275,8 +249,6 @@ export const useArcGISTravelAdvisoryLayer = (
             ) {
               return true
             }
-
-            // Match by ISO3 code in properties
             const props = feature.properties || {}
             if (
               props.iso_a3 === iso3 ||
@@ -289,8 +261,6 @@ export const useArcGISTravelAdvisoryLayer = (
             ) {
               return true
             }
-
-            // Match by ISO2 code in properties (fallback)
             if (
               iso2 &&
               (props.iso_a2 === iso2 ||
@@ -303,8 +273,6 @@ export const useArcGISTravelAdvisoryLayer = (
             ) {
               return true
             }
-
-            // Match by country name in properties - check multiple possible fields
             const nameFields = [
               'name',
               'NAME',
@@ -322,7 +290,6 @@ export const useArcGISTravelAdvisoryLayer = (
               const name = props[field] || ''
               const nameLower = name.toLowerCase()
 
-              // Check exact match only
               if (nameLower === countryLower) {
                 return true
               }
@@ -336,7 +303,6 @@ export const useArcGISTravelAdvisoryLayer = (
             continue
           }
 
-          // Create a FeatureCollection with just this country
           const countryGeoJson = {
             type: 'FeatureCollection',
             features: [countryFeature],
@@ -365,7 +331,6 @@ export const useArcGISTravelAdvisoryLayer = (
       const color = getLevelColor(level)
       const alpha = level === null ? 0.1 : 0.4
 
-      // Convert GeoJSON to ArcGIS geometry
       if (
         geoJson.type === 'FeatureCollection' &&
         Array.isArray(geoJson.features)
@@ -375,7 +340,6 @@ export const useArcGISTravelAdvisoryLayer = (
 
           const geometry = feature.geometry
           if (geometry.type === 'Polygon') {
-            // Polygon: coordinates is an array of rings (first is outer, rest are holes)
             const outerRing = geometry.coordinates[0].map((coord: number[]) => [
               coord[0],
               coord[1],
@@ -399,14 +363,13 @@ export const useArcGISTravelAdvisoryLayer = (
               attributes: {
                 country: item.country,
                 level: level,
-                item: item, // Store full item for popup
+                item: item,
               },
             })
 
             graphicsLayer.add(graphic)
             countryGraphicsRef.current.set(item.country, graphic)
           } else if (geometry.type === 'MultiPolygon') {
-            // MultiPolygon: coordinates is an array of polygons
             for (const polygonCoords of geometry.coordinates) {
               const outerRing = polygonCoords[0].map((coord: number[]) => [
                 coord[0],
@@ -431,7 +394,7 @@ export const useArcGISTravelAdvisoryLayer = (
                 attributes: {
                   country: item.country,
                   level: level,
-                  item: item, // Store full item for popup
+                  item: item,
                 },
               })
 
@@ -446,7 +409,6 @@ export const useArcGISTravelAdvisoryLayer = (
           }
         }
       } else if (geoJson.type === 'Feature' && geoJson.geometry) {
-        // Handle single feature
         const geometry = geoJson.geometry
         if (geometry.type === 'Polygon') {
           const outerRing = geometry.coordinates[0].map((coord: number[]) => [
@@ -472,7 +434,7 @@ export const useArcGISTravelAdvisoryLayer = (
             attributes: {
               country: item.country,
               level: level,
-              item: item, // Store full item for popup
+              item: item,
             },
           })
 
@@ -503,7 +465,7 @@ export const useArcGISTravelAdvisoryLayer = (
               attributes: {
                 country: item.country,
                 level: level,
-                item: item, // Store full item for popup
+                item: item,
               },
             })
 
@@ -515,13 +477,10 @@ export const useArcGISTravelAdvisoryLayer = (
           )
         }
       }
-    } catch {
-      // skip failed geometry
-    }
+    } catch {}
   }
 }
 
-// Helper functions
 const hexToRgb = (hex: string): [number, number, number] => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
   return result
