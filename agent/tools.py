@@ -63,32 +63,9 @@ def _make_tool_fn(mcp_url: str, method: str, path: str) -> Callable[..., Any]:
         else:
             response = httpx.request(method, url, json=kwargs, timeout=TIMEOUT_API)
 
-        if method == "GET" and path == "/api/risk" and response.status_code == 404:
-            payload = {
-                "found": False,
-                "data": [],
-                "message": "No data found for the specified country or city in the database.",
-            }
-            key = _cache_key(url, kwargs)
-            _GET_CACHE[key] = (time.time(), payload)
-            return payload
-
         try:
             response.raise_for_status()
-        except HTTPStatusError as e:
-            if (
-                e.response.status_code == 404
-                and method == "GET"
-                and path == "/api/risk"
-            ):
-                payload = {
-                    "found": False,
-                    "data": [],
-                    "message": "No data found for the specified country or city in the database.",
-                }
-                key = _cache_key(url, kwargs)
-                _GET_CACHE[key] = (time.time(), payload)
-                return payload
+        except HTTPStatusError:
             raise
         try:
             payload = response.json()
@@ -101,13 +78,19 @@ def _make_tool_fn(mcp_url: str, method: str, path: str) -> Callable[..., Any]:
     return _fn
 
 
+# Groq API may only accept a limited number of tools; exclude meta tools so user-facing tools (e.g. gdelt_risk_hotspots) are included.
+AGENT_TOOL_EXCLUDE = {"list_tools"}
+
+
 def build_tools(mcp_url: str) -> list[StructuredTool]:
     response = httpx.get(f"{mcp_url}/api/tools", timeout=TIMEOUT_API)
     response.raise_for_status()
     tool_defs = response.json()
     tools = []
     for tool_def in tool_defs:
-        func = tool_def["function"]
+        func = tool_def.get("function") or {}
+        if func.get("name") in AGENT_TOOL_EXCLUDE:
+            continue
         req = func.get("request", {})
         method = req.get("method", "POST")
         path = req.get("path", "/")

@@ -7,6 +7,7 @@ import type { RiskItem } from '../../store/riskStore'
 import type { JPMorganOffice } from '../../store/jpmorganStore'
 import type { TravelAdvisoryItem } from '../../store/travelAdvisoryStore'
 import type { GdeltHotspot } from '../../store/gdeltStore'
+import { useGdeltStore } from '../../store/gdeltStore'
 
 export type MapPopupPayload =
   | { type: 'price'; item: PriceItem }
@@ -241,6 +242,11 @@ const GdeltPopupContent = ({
   </div>
 )
 
+function GdeltPopupContentWithQuery({ item }: { item: GdeltHotspot }) {
+  const query = useGdeltStore((state) => state.query)
+  return <GdeltPopupContent item={item} query={query} />
+}
+
 export default function MapPopup({ x, y, payload, onClose }: MapPopupProps) {
   const content =
     payload.type === 'price' ? (
@@ -250,7 +256,7 @@ export default function MapPopup({ x, y, payload, onClose }: MapPopupProps) {
     ) : payload.type === 'jpmorgan' ? (
       <JPMorganPopupContent office={payload.office} />
     ) : payload.type === 'gdelt' ? (
-      <GdeltPopupContent item={payload.item} query={payload.query} />
+      <GdeltPopupContentWithQuery item={payload.item} />
     ) : (
       <TravelAdvisoryPopupContent item={payload.item} />
     )

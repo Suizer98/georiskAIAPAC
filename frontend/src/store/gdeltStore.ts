@@ -11,28 +11,54 @@ type GdeltState = {
   query: string
   loading: boolean
   error: string | null
-  fetchGdelt: (signal?: AbortSignal, query?: string) => Promise<void>
+  streamConnected: boolean
+  lastEvent: { type?: string; at?: string; query?: string } | null
+  lastSnapshot: string | null
+  fetchGdelt: (signal?: AbortSignal) => Promise<void>
 }
+
+const GDELT_DEFAULT_QUERY = 'military'
+
+let gdeltEventSource: EventSource | null = null
+const GDELT_RECONNECT_DELAY_MS = 2000
 
 export const useGdeltStore = create<GdeltState>((set) => ({
   data: [],
-  query: 'military',
+  query: GDELT_DEFAULT_QUERY,
   loading: false,
   error: null,
-  fetchGdelt: async (signal, query = 'military') => {
+  streamConnected: false,
+  lastEvent: null,
+  lastSnapshot: null,
+  // Data comes from backend DB (seeded on startup). No query/timespan params; AI or POST /api/gdelt updates display and backend broadcasts gdelt_updated (and risk updates also trigger refetch).
+  fetchGdelt: async (signal) => {
     set({ loading: true, error: null })
     try {
-      const params = new URLSearchParams({ query, timespan: '48h' })
-      const response = await fetch(`/api/gdelt?${params}`, { signal })
+      const url = `/api/gdelt?_t=${Date.now()}`
+      const response = await fetch(url, { signal })
       if (!response.ok) {
         throw new Error(`Failed to load GDELT data (${response.status})`)
       }
       const payload = await response.json()
       const features = Array.isArray(payload.features) ? payload.features : []
-      set({
-        data: features,
-        query: payload.query ?? query,
-        error: null,
+      const nextQuery = payload.query ?? GDELT_DEFAULT_QUERY
+      set((state) => {
+        const snapshot = JSON.stringify({ q: nextQuery, len: features.length })
+        const hasChanged =
+          state.lastSnapshot !== null && snapshot !== state.lastSnapshot
+        return {
+          data: features,
+          query: nextQuery,
+          error: null,
+          lastSnapshot: snapshot,
+          lastEvent: hasChanged
+            ? {
+                type: 'gdelt_updated',
+                at: new Date().toISOString(),
+                query: nextQuery,
+              }
+            : state.lastEvent,
+        }
       })
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
@@ -45,3 +71,33 @@ export const useGdeltStore = create<GdeltState>((set) => ({
     }
   },
 }))
+
+function connectGdeltStream() {
+  if (gdeltEventSource) return
+  useGdeltStore.getState().fetchGdelt()
+  const source = new EventSource('/api/gdelt/events')
+  gdeltEventSource = source
+  useGdeltStore.setState({ streamConnected: true })
+  source.onmessage = () => {
+    useGdeltStore.getState().fetchGdelt()
+  }
+  source.onerror = () => {
+    useGdeltStore.setState({ streamConnected: false })
+    source.close()
+    gdeltEventSource = null
+    setTimeout(() => connectGdeltStream(), GDELT_RECONNECT_DELAY_MS)
+  }
+}
+
+export function startGdeltStream() {
+  if (gdeltEventSource) return
+  connectGdeltStream()
+}
+
+export function stopGdeltStream() {
+  if (gdeltEventSource) {
+    gdeltEventSource.close()
+    gdeltEventSource = null
+  }
+  useGdeltStore.setState({ streamConnected: false })
+}

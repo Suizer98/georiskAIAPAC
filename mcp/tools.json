@@ -167,14 +167,6 @@
   {
     "type": "function",
     "function": {
-      "name": "list_tools",
-      "description": "List available MCP tools",
-      "request": { "method": "GET", "path": "/api/tools" }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
       "name": "map_zoom_to_place",
       "description": "Ask the frontend map to zoom to a place. Pass 'place' (e.g. Singapore, Jakarta) for APAC names in the backend map; if the place is not in the map, pass 'latitude' and 'longitude' instead.",
       "request": { "method": "POST", "path": "/api/map-actions" },
@@ -186,6 +178,30 @@
           "longitude": { "type": "number", "description": "Longitude (use when place not in map)" }
         }
       }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "gdelt_risk_hotspots",
+      "description": "Get GDELT risk hotspots (lat/lon) for a topic. Use when the user asks to show risk hotspots for a specific topic (e.g. Nipah virus, military, disease outbreak). Updates the map with hotspots and returns the data.",
+      "request": { "method": "POST", "path": "/api/gdelt" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Topic keyword for GDELT (e.g. nipah virus, military, disease outbreak)" },
+          "timespan": { "type": "string", "description": "Time window (e.g. 24h, 48h, 7d). Optional, default 24h." }
+        },
+        "required": ["query"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "list_tools",
+      "description": "List available MCP tools",
+      "request": { "method": "GET", "path": "/api/tools" }
     }
   }
 ]

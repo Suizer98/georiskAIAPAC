@@ -10,13 +10,13 @@ from typing import Any, Optional
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from ddgs import DDGS
 
 from db import get_db
-from models import RiskData
-from schemas import RiskDataCreate, RiskDataOut, RiskDataUpdate
+from models import RiskData, GdeltDisplay
+from schemas import RiskDataCreate, RiskDataOut, RiskDataUpdate, GdeltDisplayOut
 from scoring import (
     score_economy,
     score_ambassy_advice,
@@ -60,6 +60,17 @@ _risk_subscribers: list[asyncio.Queue[str]] = []
 _map_actions_pending: list[dict[str, Any]] = []
 _map_action_subscribers: list[asyncio.Queue[str]] = []
 
+_gdelt_subscribers: list[asyncio.Queue[str]] = []
+
+
+async def _broadcast_gdelt_event(event: dict) -> None:
+    msg = f"data: {json.dumps(event)}\n\n"
+    for q in list(_gdelt_subscribers):
+        try:
+            q.put_nowait(msg)
+        except asyncio.QueueFull:
+            continue
+
 
 async def _broadcast_map_action(action: dict) -> None:
     payload = f"data: {json.dumps(action)}\n\n"
@@ -99,8 +110,7 @@ def get_risk_data(
         query = query.filter(RiskData.city == city)
 
     data = query.all()
-    if (country or city) and not data:
-        raise HTTPException(status_code=404, detail="Not found")
+    # Return 200 with empty list when filtered by country/city and no match (no 404 so agent/MCP callers get consistent list response)
     return data
 
 
@@ -120,7 +130,11 @@ async def risk_events():
             if queue in _risk_subscribers:
                 _risk_subscribers.remove(queue)
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    resp = StreamingResponse(event_generator(), media_type="text/event-stream")
+    resp.headers["Cache-Control"] = "no-cache, no-store"
+    resp.headers["X-Accel-Buffering"] = "no"
+    resp.headers["Connection"] = "keep-alive"
+    return resp
 
 
 @router.post("/api/risk", response_model=RiskDataOut)
@@ -150,6 +164,9 @@ async def create_risk_data(payload: RiskDataCreate, db: Session = Depends(get_db
             "at": datetime.utcnow().isoformat() + "Z",
         }
     )
+    await _broadcast_gdelt_event(
+        {"type": "gdelt_updated", "at": datetime.utcnow().isoformat() + "Z"}
+    )
     return risk
 
 
@@ -173,6 +190,9 @@ async def update_risk_data(
             "at": datetime.utcnow().isoformat() + "Z",
         }
     )
+    await _broadcast_gdelt_event(
+        {"type": "gdelt_updated", "at": datetime.utcnow().isoformat() + "Z"}
+    )
     return risk
 
 
@@ -189,6 +209,9 @@ async def delete_risk_data(risk_id: int, db: Session = Depends(get_db)):
             "id": risk_id,
             "at": datetime.utcnow().isoformat() + "Z",
         }
+    )
+    await _broadcast_gdelt_event(
+        {"type": "gdelt_updated", "at": datetime.utcnow().isoformat() + "Z"}
     )
     return {"message": "deleted"}
 
@@ -420,29 +443,7 @@ def get_price_data(body: PriceRequest):
     return list_price_data(country_codes=body.country_codes or [])
 
 
-@router.get("/api/gdelt")
-async def get_gdelt_hotspots(
-    query: str = Query("military", description="Keyword for GDELT"),
-    timespan: str = Query(
-        GDELT_HOTSPOT_TIMESPAN, description="Time window (e.g. 24h, 7d)"
-    ),
-):
-    try:
-        async with httpx.AsyncClient(timeout=TIMEOUT_STANDARD) as client:
-            resp = await client.get(
-                GDELT_GEO_API_URL,
-                params={
-                    "query": query,
-                    "mode": "pointheatmap",
-                    "format": "geojson",
-                    "timespan": timespan,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-    except Exception as exc:
-        logger.warning(f"GDELT request failed: {exc}")
-        return {"query": query, "features": []}
+def _parse_gdelt_features(data: dict) -> list[dict]:
     features = data.get("features") or []
     out = []
     for f in features:
@@ -471,7 +472,105 @@ async def get_gdelt_hotspots(
                 "count": int(count) if count is not None else 1,
             }
         )
-    return {"query": query, "timespan": timespan, "features": out}
+    return out
+
+
+async def _fetch_gdelt_hotspots(
+    query: str, timespan: str
+) -> tuple[str, str, list[dict]]:
+    async with httpx.AsyncClient(timeout=TIMEOUT_STANDARD) as client:
+        resp = await client.get(
+            GDELT_GEO_API_URL,
+            params={
+                "query": query,
+                "mode": "pointheatmap",
+                "format": "geojson",
+                "timespan": timespan,
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    features = _parse_gdelt_features(data)
+    return query, timespan, features
+
+
+@router.get("/api/gdelt", response_model=GdeltDisplayOut)
+async def get_gdelt_hotspots(db: Session = Depends(get_db)):
+    row = db.query(GdeltDisplay).first()
+    if row:
+        features = row.get_features()
+        return {"query": row.query, "timespan": row.timespan, "features": features}
+    query, timespan, features = await _fetch_gdelt_hotspots(
+        "military", GDELT_HOTSPOT_TIMESPAN
+    )
+    row = GdeltDisplay(query=query, timespan=timespan)
+    row.set_features(features)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {"query": query, "timespan": timespan, "features": features}
+
+
+@router.get("/api/gdelt/events")
+async def gdelt_events():
+    queue: asyncio.Queue[str] = asyncio.Queue(maxsize=HTTP_QUEUE_MAXSIZE)
+    _gdelt_subscribers.append(queue)
+
+    async def event_generator():
+        try:
+            while True:
+                message = await queue.get()
+                yield message
+        except asyncio.CancelledError:
+            raise
+        finally:
+            if queue in _gdelt_subscribers:
+                _gdelt_subscribers.remove(queue)
+
+    resp = StreamingResponse(event_generator(), media_type="text/event-stream")
+    resp.headers["Cache-Control"] = "no-cache, no-store"
+    resp.headers["X-Accel-Buffering"] = "no"
+    resp.headers["Connection"] = "keep-alive"
+    return resp
+
+
+class GdeltPostRequest(BaseModel):
+    query: Optional[str] = "military"
+    timespan: Optional[str] = GDELT_HOTSPOT_TIMESPAN
+
+
+@router.post("/api/gdelt", response_model=GdeltDisplayOut)
+async def post_gdelt_hotspots(body: GdeltPostRequest, db: Session = Depends(get_db)):
+    query = (body.query or "military").strip() if body.query else "military"
+    timespan = body.timespan or GDELT_HOTSPOT_TIMESPAN
+    try:
+        _, _, features = await _fetch_gdelt_hotspots(query, timespan)
+    except Exception as exc:
+        logger.warning("GDELT request failed: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="GDELT API request failed; display not updated.",
+        )
+    row = db.query(GdeltDisplay).first()
+    if row:
+        row.query = query
+        row.timespan = timespan
+        row.set_features(features)
+        row.updated_at = datetime.utcnow()
+    else:
+        row = GdeltDisplay(query=query, timespan=timespan)
+        row.set_features(features)
+        db.add(row)
+    db.commit()
+    db.refresh(row)
+    await _broadcast_gdelt_event(
+        {"type": "gdelt_updated", "at": datetime.utcnow().isoformat() + "Z"}
+    )
+    # Also notify risk subscribers so frontend refetches GDELT via risk stream (same as risk layer)
+    await _broadcast_risk_event(
+        {"type": "gdelt_updated", "at": datetime.utcnow().isoformat() + "Z"}
+    )
+    return {"query": query, "timespan": timespan, "features": features}
 
 
 def _mcp_tools_payload() -> list[dict]:

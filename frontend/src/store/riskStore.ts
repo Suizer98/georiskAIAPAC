@@ -80,6 +80,8 @@ export const startRiskStream = () => {
   useRiskStore.setState({ streamConnected: true })
   source.onmessage = () => {
     useRiskStore.getState().fetchRisk()
+    // Also refetch GDELT so both layers update without refresh when risk is updated
+    import('./gdeltStore').then((m) => m.useGdeltStore.getState().fetchGdelt())
   }
   source.onerror = () => {
     useRiskStore.setState({ streamConnected: false })

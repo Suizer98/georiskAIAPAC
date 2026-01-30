@@ -31,3 +31,11 @@ class RiskDataOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class GdeltDisplayOut(BaseModel):
+    """Response schema for GET/POST /api/gdelt (query, timespan, features)."""
+
+    query: str
+    timespan: str
+    features: list
