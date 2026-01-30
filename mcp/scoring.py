@@ -16,8 +16,8 @@ from constant import (
     TIMEOUT_STANDARD,
     TIMEOUT_LONG,
     TIMEOUT_MEDIUM,
-    GDELT_TIMESPAN_24H,
-    GDELT_TIMESPAN_30D,
+    GDELT_HOTSPOT_TIMESPAN,
+    GDELT_UNCERTAINTY_TIMESPAN,
     SCORING_COUNTRY_NAME_TO_ISO2,
 )
 
@@ -319,7 +319,7 @@ def score_uncertainty(country: str) -> dict[str, Any]:
                 "query": query,
                 "mode": "TimelineVol",
                 "format": "json",
-                "timespan": GDELT_TIMESPAN_30D,
+                "timespan": GDELT_UNCERTAINTY_TIMESPAN,
             },
             timeout=TIMEOUT_LONG,
         )
@@ -368,7 +368,7 @@ def score_military(country: str) -> dict[str, Any]:
                 "query": query,
                 "mode": "pointdata",
                 "format": "geojson",
-                "timespan": GDELT_TIMESPAN_24H,
+                "timespan": GDELT_HOTSPOT_TIMESPAN,
             },
             timeout=TIMEOUT_LONG,
         )

@@ -20,7 +20,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (location.pathname.startsWith('/price')) {
+    if (location.pathname.startsWith('/market')) {
       setLayer('risk', false)
       setLayer('travel_advisory', false)
       setLayer('jpmorgan', false)
@@ -47,7 +47,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/risk" replace />} />
           <Route path="/risk" element={null} />
-          <Route path="/price" element={null} />
+          <Route path="/market" element={null} />
         </Routes>
       </div>
       <Toast.Root

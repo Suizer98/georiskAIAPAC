@@ -83,6 +83,10 @@ RESTCOUNTRIES_ALPHA_URL = "https://restcountries.com/v3.1/alpha"
 WORLDBANK_API_URL = "https://api.worldbank.org/v2/country"
 GDELT_DOC_API_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 GDELT_GEO_API_URL = "https://api.gdeltproject.org/api/v2/geo/geo"
+APAC_LON_MIN = 60.0
+APAC_LON_MAX = 180.0
+APAC_LAT_MIN = -50.0
+APAC_LAT_MAX = 60.0
 EXCHANGERATE_API_URL = "https://api.exchangerate.host/latest"
 METALPRICE_API_URL = "https://api.metalpriceapi.com/v1/latest"
 GOLDPRICE_API_URL = "https://data-asg.goldprice.org/dbXRates/USD"
@@ -102,6 +106,5 @@ HTTP_QUEUE_MAXSIZE = 10
 # Units
 METALS_UNIT = "troy oz"
 
-# GDELT timespans
-GDELT_TIMESPAN_24H = "24h"
-GDELT_TIMESPAN_30D = "30d"
+GDELT_HOTSPOT_TIMESPAN = "24h"
+GDELT_UNCERTAINTY_TIMESPAN = "30d"

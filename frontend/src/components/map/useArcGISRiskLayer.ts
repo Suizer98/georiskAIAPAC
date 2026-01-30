@@ -8,27 +8,13 @@ import type { RiskItem } from '../../store/riskStore'
 import { riskColor } from './riskColor'
 import type { MapPopupSelection } from './MapPopup'
 
-type HeatmapEntry = {
-  graphic: Graphic
-  baseColor: string
-  phase: number
-}
-
 export const useArcGISRiskLayer = (
   viewRef: React.RefObject<MapView | null>,
   riskData: RiskItem[],
   enabled: boolean,
   onSelect: (data: MapPopupSelection | null) => void
 ) => {
-  const animationRef = useRef<number | null>(null)
   const graphicsLayerRef = useRef<GraphicsLayer | null>(null)
-
-  useEffect(() => {
-    if (graphicsLayerRef.current) {
-      graphicsLayerRef.current.title = 'City'
-    }
-  }, [])
-  const heatmapRef = useRef<HeatmapEntry[]>([])
   const clickHandlerRef = useRef<any>(null)
   const hoverHandlerRef = useRef<any>(null)
   const hoverRef = useRef<Graphic | null>(null)
@@ -121,36 +107,7 @@ export const useArcGISRiskLayer = (
         })
     })
 
-    // Animation loop for pulsing effect
-    const animate = () => {
-      const time = performance.now() / 1000
-      heatmapRef.current.forEach(({ graphic, baseColor, phase }) => {
-        const alpha = 0.2 + (0.6 * (1 + Math.sin(time * 2 + phase))) / 2
-        const rgb = hexToRgb(baseColor)
-        const color = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`
-
-        // Update point symbol
-        if (graphic.symbol instanceof SimpleMarkerSymbol) {
-          graphic.symbol = new SimpleMarkerSymbol({
-            style: 'circle',
-            color: color,
-            size: graphic.symbol.size,
-            outline: {
-              color: 'rgba(0, 0, 0, 0.4)',
-              width: 3,
-            },
-          })
-        }
-      })
-      animationRef.current = requestAnimationFrame(animate)
-    }
-    animationRef.current = requestAnimationFrame(animate)
-
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-        animationRef.current = null
-      }
       if (hoverHandlerRef.current) {
         hoverHandlerRef.current.remove()
         hoverHandlerRef.current = null
@@ -170,7 +127,6 @@ export const useArcGISRiskLayer = (
         }
       }
       graphicsLayerRef.current = null
-      heatmapRef.current = []
     }
   }, [viewRef, onSelect])
 
@@ -182,7 +138,6 @@ export const useArcGISRiskLayer = (
 
     graphicsLayer.visible = enabled
     graphicsLayer.removeAll()
-    heatmapRef.current = []
 
     if (!enabled) {
       return
@@ -203,15 +158,13 @@ export const useArcGISRiskLayer = (
 
       const risk = Number(item?.risk_level ?? 0)
       const baseColor = riskColor(risk)
-      const pointSize = 40 + Math.round((Math.min(risk, 100) / 100) * 30) // Increased from 24-46 to 40-70
+      const pointSize = 40 + Math.round((Math.min(risk, 100) / 100) * 30)
 
-      // Create point
       const point = new Point({
         longitude: item.longitude,
         latitude: item.latitude,
       })
 
-      // Create point symbol
       const pointSymbol = new SimpleMarkerSymbol({
         style: 'circle',
         color: hexToRgba(baseColor, 0.95),
@@ -222,7 +175,6 @@ export const useArcGISRiskLayer = (
         },
       })
 
-      // Create label graphic (initially hidden)
       const labelText = item.city ?? item.country ?? `${Math.round(risk)}`
       const labelPoint = new Point({
         longitude: item.longitude,
@@ -246,7 +198,6 @@ export const useArcGISRiskLayer = (
         visible: false,
       })
 
-      // Create main point graphic
       const pointGraphic = new Graphic({
         geometry: point,
         symbol: pointSymbol,
@@ -256,19 +207,11 @@ export const useArcGISRiskLayer = (
         },
       })
 
-      // Add all graphics to layer
       graphicsLayer.addMany([pointGraphic, labelGraphic])
-
-      heatmapRef.current.push({
-        graphic: pointGraphic,
-        baseColor,
-        phase: Math.random() * Math.PI * 2,
-      })
     })
   }, [riskData, enabled, viewRef])
 }
 
-// Helper functions
 const hexToRgb = (hex: string): [number, number, number] => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
   return result

@@ -32,6 +32,12 @@ from constant import (
     HTTP_QUEUE_MAXSIZE,
     CACHE_TTL,
     PLACE_TO_COORDINATES,
+    GDELT_GEO_API_URL,
+    GDELT_HOTSPOT_TIMESPAN,
+    APAC_LON_MIN,
+    APAC_LON_MAX,
+    APAC_LAT_MIN,
+    APAC_LAT_MAX,
 )
 
 router = APIRouter()
@@ -412,6 +418,60 @@ class PriceRequest(BaseModel):
 @router.post("/api/price")
 def get_price_data(body: PriceRequest):
     return list_price_data(country_codes=body.country_codes or [])
+
+
+@router.get("/api/gdelt")
+async def get_gdelt_hotspots(
+    query: str = Query("military", description="Keyword for GDELT"),
+    timespan: str = Query(
+        GDELT_HOTSPOT_TIMESPAN, description="Time window (e.g. 24h, 7d)"
+    ),
+):
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT_STANDARD) as client:
+            resp = await client.get(
+                GDELT_GEO_API_URL,
+                params={
+                    "query": query,
+                    "mode": "pointheatmap",
+                    "format": "geojson",
+                    "timespan": timespan,
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as exc:
+        logger.warning(f"GDELT request failed: {exc}")
+        return {"query": query, "features": []}
+    features = data.get("features") or []
+    out = []
+    for f in features:
+        geom = f.get("geometry")
+        if not geom or geom.get("type") != "Point":
+            continue
+        coords = geom.get("coordinates")
+        if not coords or len(coords) < 2:
+            continue
+        lng, lat = float(coords[0]), float(coords[1])
+        if not (
+            APAC_LON_MIN <= lng <= APAC_LON_MAX and APAC_LAT_MIN <= lat <= APAC_LAT_MAX
+        ):
+            continue
+        props = f.get("properties") or {}
+        count = (
+            props.get("count")
+            or props.get("numarticles")
+            or props.get("numcounts")
+            or 1
+        )
+        out.append(
+            {
+                "latitude": lat,
+                "longitude": lng,
+                "count": int(count) if count is not None else 1,
+            }
+        )
+    return {"query": query, "timespan": timespan, "features": out}
 
 
 def _mcp_tools_payload() -> list[dict]:

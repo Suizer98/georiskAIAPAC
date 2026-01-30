@@ -61,7 +61,9 @@ export const useArcGISTravelAdvisoryLayer = (
   const countryGraphicsRef = useRef<Map<string, Graphic>>(new Map())
   const hoverHandlerRef = useRef<any>(null)
   const clickHandlerRef = useRef<any>(null)
+  const doubleClickHandlerRef = useRef<any>(null)
   const hoverRef = useRef<Graphic | null>(null)
+  const pointerOverAdvisoryRef = useRef(false)
 
   useEffect(() => {
     if (graphicsLayerRef.current) {
@@ -94,6 +96,7 @@ export const useArcGISTravelAdvisoryLayer = (
               (result: any) => result.graphic?.layer === graphicsLayer
             )?.graphic as Graphic | undefined
 
+            pointerOverAdvisoryRef.current = !!graphic
             if (graphic && graphic !== hoverRef.current) {
               const item = graphic.attributes?.item as
                 | TravelAdvisoryItem
@@ -109,9 +112,12 @@ export const useArcGISTravelAdvisoryLayer = (
                 })
                 hoverRef.current = graphic
               }
-            } else if (!graphic && hoverRef.current) {
-              onSelect(null)
-              hoverRef.current = null
+            } else if (!graphic) {
+              pointerOverAdvisoryRef.current = false
+              if (hoverRef.current) {
+                onSelect(null)
+                hoverRef.current = null
+              }
             }
           })
           .catch(() => {})
@@ -145,6 +151,16 @@ export const useArcGISTravelAdvisoryLayer = (
           })
           .catch(() => {})
       })
+
+      doubleClickHandlerRef.current = view.on('double-click', (event: any) => {
+        if (view.destroyed) return
+        if (
+          pointerOverAdvisoryRef.current &&
+          typeof event.stopPropagation === 'function'
+        ) {
+          event.stopPropagation()
+        }
+      })
     }
 
     return () => {
@@ -155,6 +171,10 @@ export const useArcGISTravelAdvisoryLayer = (
       if (clickHandlerRef.current) {
         clickHandlerRef.current.remove()
         clickHandlerRef.current = null
+      }
+      if (doubleClickHandlerRef.current) {
+        doubleClickHandlerRef.current.remove()
+        doubleClickHandlerRef.current = null
       }
       const currentView = viewRef.current
       if (currentView && !currentView.destroyed && graphicsLayerRef.current) {

@@ -63,7 +63,7 @@ export const useRiskStore = create<RiskState>((set) => ({
         set({ loading: false })
         return
       }
-      set({ error: 'Unable to load risk data.' })
+      set({ error: 'Unable to load risk data. Is the backend running?' })
     } finally {
       set({ loading: false })
     }

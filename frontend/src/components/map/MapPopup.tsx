@@ -6,12 +6,14 @@ import type { PriceItem } from '../../store/priceStore'
 import type { RiskItem } from '../../store/riskStore'
 import type { JPMorganOffice } from '../../store/jpmorganStore'
 import type { TravelAdvisoryItem } from '../../store/travelAdvisoryStore'
+import type { GdeltHotspot } from '../../store/gdeltStore'
 
 export type MapPopupPayload =
   | { type: 'price'; item: PriceItem }
   | { type: 'risk'; item: RiskItem }
   | { type: 'jpmorgan'; office: JPMorganOffice }
   | { type: 'travel_advisory'; item: TravelAdvisoryItem }
+  | { type: 'gdelt'; item: GdeltHotspot; query: string }
 
 export type MapPopupSelection = {
   x: number
@@ -211,6 +213,34 @@ const TravelAdvisoryPopupContent = ({ item }: { item: TravelAdvisoryItem }) => {
   )
 }
 
+const GdeltPopupContent = ({
+  item,
+  query,
+}: {
+  item: GdeltHotspot
+  query: string
+}) => (
+  <div className="space-y-2">
+    <div className="text-lg font-bold">GDELT Hotspot</div>
+    <div className="space-y-1 text-sm">
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-400">Query</span>
+        <span className="font-mono text-gray-200">{query}</span>
+      </div>
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-400">Location</span>
+        <span className="font-mono text-gray-200">
+          {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
+        </span>
+      </div>
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-400">Mentions</span>
+        <span className="font-mono text-gray-200">{item.count ?? 1}</span>
+      </div>
+    </div>
+  </div>
+)
+
 export default function MapPopup({ x, y, payload, onClose }: MapPopupProps) {
   const content =
     payload.type === 'price' ? (
@@ -219,6 +249,8 @@ export default function MapPopup({ x, y, payload, onClose }: MapPopupProps) {
       <RiskPopupContent item={payload.item} />
     ) : payload.type === 'jpmorgan' ? (
       <JPMorganPopupContent office={payload.office} />
+    ) : payload.type === 'gdelt' ? (
+      <GdeltPopupContent item={payload.item} query={payload.query} />
     ) : (
       <TravelAdvisoryPopupContent item={payload.item} />
     )

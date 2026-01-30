@@ -7,9 +7,10 @@ import { useRiskStore } from '../../store/riskStore'
 import { usePriceStore } from '../../store/priceStore'
 import { useJPMorganStore } from '../../store/jpmorganStore'
 import { useTravelAdvisoryStore } from '../../store/travelAdvisoryStore'
+import { useGdeltStore } from '../../store/gdeltStore'
 
 type LegendItem = {
-  id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory'
+  id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory' | 'gdelt'
   displayName: string
   layerTitle: string
   iconColor: string
@@ -31,13 +32,15 @@ export default function LayerListWidget() {
   const jpmorganData = useJPMorganStore((state) => state.data)
   const travelAdvisoryLoading = useTravelAdvisoryStore((state) => state.loading)
   const travelAdvisoryData = useTravelAdvisoryStore((state) => state.data)
+  const gdeltLoading = useGdeltStore((state) => state.loading)
+  const gdeltData = useGdeltStore((state) => state.data)
 
   // Map layer IDs to their loading states
   // A layer is considered loading if:
   // 1. It's actively loading, OR
   // 2. It's enabled but has no data yet (initial load state)
   const getLayerLoading = (
-    id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory'
+    id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory' | 'gdelt'
   ) => {
     const isEnabled = layers.find((layer) => layer.id === id)?.enabled ?? false
 
@@ -53,6 +56,8 @@ export default function LayerListWidget() {
           travelAdvisoryLoading ||
           (isEnabled && travelAdvisoryData.length === 0)
         )
+      case 'gdelt':
+        return gdeltLoading || (isEnabled && gdeltData.length === 0)
       default:
         return false
     }
@@ -60,9 +65,9 @@ export default function LayerListWidget() {
 
   // Determine which legend items to show based on route
   const legendItems = useMemo<LegendItem[]>(() => {
-    const isPriceRoute = location.pathname.startsWith('/price')
+    const isMarketRoute = location.pathname.startsWith('/market')
 
-    if (isPriceRoute) {
+    if (isMarketRoute) {
       return [
         {
           id: 'price',
@@ -97,12 +102,19 @@ export default function LayerListWidget() {
         iconColor: '#f97316',
         iconBorderColor: 'rgba(255, 255, 255, 0.3)',
       },
+      {
+        id: 'gdelt',
+        displayName: 'GDELT Hotspots',
+        layerTitle: 'GDELT Hotspots',
+        iconColor: '#dc2626',
+        iconBorderColor: 'rgba(255, 255, 255, 0.3)',
+      },
     ]
   }, [location.pathname])
 
   // Get layer visibility state
   const getLayerVisibility = (
-    id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory'
+    id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory' | 'gdelt'
   ) => {
     return layers.find((layer) => layer.id === id)?.enabled ?? false
   }

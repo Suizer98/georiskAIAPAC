@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 export type MapLayer = {
-  id: 'risk' | 'price' | 'jpmorgan' | 'travel_advisory'
+  id: 'risk' | 'price' | 'jpmorgan' | 'travel_advisory' | 'gdelt'
   label: string
   enabled: boolean
 }
@@ -16,6 +16,7 @@ export const useLayerStore = create<LayerState>((set) => ({
   layers: [
     { id: 'risk', label: 'City', enabled: true },
     { id: 'travel_advisory', label: 'Travel Advisory Levels', enabled: true },
+    { id: 'gdelt', label: 'GDELT Hotspots', enabled: true },
     { id: 'price', label: 'Metals Price', enabled: false },
     { id: 'jpmorgan', label: 'JP Morgan Offices', enabled: false },
   ],

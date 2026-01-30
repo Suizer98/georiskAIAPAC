@@ -25,7 +25,7 @@ export default function TopBar() {
   const travelAdvisoryError = useTravelAdvisoryStore((state) => state.error)
 
   const isRiskActive = location.pathname.startsWith('/risk')
-  const activeTab = isRiskActive ? 'risk' : 'price'
+  const activeTab = isRiskActive ? 'risk' : 'market'
 
   // Show loading if:
   // 1. Actively loading, OR
@@ -39,7 +39,7 @@ export default function TopBar() {
   const isLoading =
     (activeTab === 'risk' &&
       (riskNeedsLoading || travelAdvisoryNeedsLoading)) ||
-    (activeTab === 'price' && priceNeedsLoading)
+    (activeTab === 'market' && priceNeedsLoading)
 
   return (
     <header className="fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur">
@@ -87,10 +87,10 @@ export default function TopBar() {
                 Risk
               </Tabs.Trigger>
               <Tabs.Trigger
-                value="price"
+                value="market"
                 className="rounded-full border px-4 py-2 text-sm font-medium transition data-[state=active]:border-amber-300/70 data-[state=active]:bg-amber-400/20 data-[state=active]:text-amber-100 border-white/15 bg-white/5 text-white hover:bg-white/10"
               >
-                Price
+                Market
               </Tabs.Trigger>
             </Tabs.List>
           </Tabs.Root>
