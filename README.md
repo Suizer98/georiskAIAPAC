@@ -64,3 +64,9 @@ docker compose exec agent black --check .
   - Safety (25%): World Bank intentional homicides per 100k (VC.IHR.PSRC.P5) - Inverted (higher homicides = higher risk)
   - Uncertainty (15%): GDELT DOC 2.0 API - Economic policy uncertainty mentions (last 30 days)
   - Ambassy Advice (10%): US State Department Travel Advisory levels (1-4, converted to risk score)
+
+## Screenshot
+
+![georisk](docs/georisk.png)
+
+For more screenshots, see the [docs](docs/) folder.
