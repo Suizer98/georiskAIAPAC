@@ -23,6 +23,31 @@ const getLevelColor = (level: number | null): string => {
   return LEVEL_COLORS[level] ?? '#6b7280'
 }
 
+const WORLD_GEOJSON_URL =
+  'https://cdn.jsdelivr.net/gh/datasets/geo-countries@main/data/countries.geojson'
+let worldGeoJsonCache: { type: string; features: any[] } | null = null
+
+async function getWorldGeoJson(): Promise<{ type: string; features: any[] } | null> {
+  if (
+    worldGeoJsonCache?.type === 'FeatureCollection' &&
+    Array.isArray(worldGeoJsonCache.features)
+  ) {
+    return worldGeoJsonCache
+  }
+  try {
+    const res = await fetch(WORLD_GEOJSON_URL)
+    if (!res.ok) return null
+    const json = await res.json()
+    if (json?.type === 'FeatureCollection' && Array.isArray(json.features)) {
+      worldGeoJsonCache = json
+      return json
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
 export const useArcGISTravelAdvisoryLayer = (
   viewRef: React.RefObject<MapView | null>,
   travelAdvisoryData: TravelAdvisoryItem[],
@@ -171,28 +196,8 @@ export const useArcGISTravelAdvisoryLayer = (
         return advisoryByIso2.get(key) ?? null
       }
 
-      let successCount = 0
-      let errorCount = 0
-
-      const worldGeoJsonUrl =
-        'https://cdn.jsdelivr.net/gh/datasets/geo-countries@main/data/countries.geojson'
-
-      let worldGeoJson: any = null
-      try {
-        const worldResponse = await fetch(worldGeoJsonUrl)
-        if (!worldResponse.ok) return
-        worldGeoJson = await worldResponse.json()
-      } catch {
-        return
-      }
-
-      if (
-        !worldGeoJson ||
-        worldGeoJson.type !== 'FeatureCollection' ||
-        !Array.isArray(worldGeoJson.features)
-      ) {
-        return
-      }
+      const worldGeoJson = await getWorldGeoJson()
+      if (!worldGeoJson) return
 
       /** GeoJSON (geo-countries) uses ISO3166-1-Alpha-2 / iso_a2; match by ISO2 only. */
       const matchByIso2 = (feature: any, iso2: string): boolean => {
@@ -218,16 +223,15 @@ export const useArcGISTravelAdvisoryLayer = (
         )
       }
 
+      const allGraphics: Graphic[] = []
+      const countryToFirstGraphic = new Map<string, Graphic>()
+
       for (const iso2 of APAC_ISO2_CODES) {
         try {
           const countryFeature = worldGeoJson.features.find((feature: any) =>
             matchByIso2(feature, iso2)
           )
-
-          if (!countryFeature) {
-            errorCount++
-            continue
-          }
+          if (!countryFeature) continue
 
           const item: TravelAdvisoryItem =
             findAdvisory(iso2) ?? {
@@ -240,11 +244,21 @@ export const useArcGISTravelAdvisoryLayer = (
             features: [countryFeature],
           }
 
-          await renderCountryGeometry(countryGeoJson, item, graphicsLayer)
-          successCount++
+          const graphics = buildGraphicsFromGeoJson(countryGeoJson, item)
+          if (graphics.length > 0) {
+            countryToFirstGraphic.set(item.country, graphics[0])
+            allGraphics.push(...graphics)
+          }
         } catch {
-          errorCount++
+          // skip country on bad geometry
         }
+      }
+
+      if (allGraphics.length > 0) {
+        graphicsLayer.addMany(allGraphics)
+        countryToFirstGraphic.forEach((graphic, country) => {
+          countryGraphicsRef.current.set(country, graphic)
+        })
       }
     }
 
@@ -252,165 +266,6 @@ export const useArcGISTravelAdvisoryLayer = (
       loadCountryBoundaries()
     }
   }, [travelAdvisoryData, enabled, viewRef])
-
-  const renderCountryGeometry = async (
-    geoJson: any,
-    item: TravelAdvisoryItem,
-    graphicsLayer: GraphicsLayer
-  ) => {
-    try {
-      const level = item.level
-      const color = getLevelColor(level)
-      const alpha = level === null ? 0.1 : 0.4
-
-      if (
-        geoJson.type === 'FeatureCollection' &&
-        Array.isArray(geoJson.features)
-      ) {
-        for (const feature of geoJson.features) {
-          if (!feature.geometry) continue
-
-          const geometry = feature.geometry
-          if (geometry.type === 'Polygon') {
-            const outerRing = geometry.coordinates[0].map((coord: number[]) => [
-              coord[0],
-              coord[1],
-            ])
-            const polygon = new Polygon({
-              rings: [outerRing],
-              spatialReference: { wkid: 4326 },
-            })
-
-            const symbol = new SimpleFillSymbol({
-              color: hexToRgba(color, alpha),
-              outline: new SimpleLineSymbol({
-                color: hexToRgba(color, 0.8),
-                width: 1,
-              }),
-            })
-
-            const graphic = new Graphic({
-              geometry: polygon,
-              symbol,
-              attributes: {
-                country: item.country,
-                level: level,
-                item: item,
-              },
-            })
-
-            graphicsLayer.add(graphic)
-            countryGraphicsRef.current.set(item.country, graphic)
-          } else if (geometry.type === 'MultiPolygon') {
-            for (const polygonCoords of geometry.coordinates) {
-              const outerRing = polygonCoords[0].map((coord: number[]) => [
-                coord[0],
-                coord[1],
-              ])
-              const polygon = new Polygon({
-                rings: [outerRing],
-                spatialReference: { wkid: 4326 },
-              })
-
-              const symbol = new SimpleFillSymbol({
-                color: hexToRgba(color, alpha),
-                outline: new SimpleLineSymbol({
-                  color: hexToRgba(color, 0.8),
-                  width: 1,
-                }),
-              })
-
-              const graphic = new Graphic({
-                geometry: polygon,
-                symbol,
-                attributes: {
-                  country: item.country,
-                  level: level,
-                  item: item,
-                },
-              })
-
-              graphicsLayer.add(graphic)
-            }
-            countryGraphicsRef.current.set(
-              item.country,
-              graphicsLayer.graphics.getItemAt(
-                graphicsLayer.graphics.length - 1
-              )
-            )
-          }
-        }
-      } else if (geoJson.type === 'Feature' && geoJson.geometry) {
-        const geometry = geoJson.geometry
-        if (geometry.type === 'Polygon') {
-          const outerRing = geometry.coordinates[0].map((coord: number[]) => [
-            coord[0],
-            coord[1],
-          ])
-          const polygon = new Polygon({
-            rings: [outerRing],
-            spatialReference: { wkid: 4326 },
-          })
-
-          const symbol = new SimpleFillSymbol({
-            color: hexToRgba(color, alpha),
-            outline: new SimpleLineSymbol({
-              color: hexToRgba(color, 0.8),
-              width: 1,
-            }),
-          })
-
-          const graphic = new Graphic({
-            geometry: polygon,
-            symbol,
-            attributes: {
-              country: item.country,
-              level: level,
-              item: item,
-            },
-          })
-
-          graphicsLayer.add(graphic)
-          countryGraphicsRef.current.set(item.country, graphic)
-        } else if (geometry.type === 'MultiPolygon') {
-          for (const polygonCoords of geometry.coordinates) {
-            const outerRing = polygonCoords[0].map((coord: number[]) => [
-              coord[0],
-              coord[1],
-            ])
-            const polygon = new Polygon({
-              rings: [outerRing],
-              spatialReference: { wkid: 4326 },
-            })
-
-            const symbol = new SimpleFillSymbol({
-              color: hexToRgba(color, alpha),
-              outline: new SimpleLineSymbol({
-                color: hexToRgba(color, 0.8),
-                width: 1,
-              }),
-            })
-
-            const graphic = new Graphic({
-              geometry: polygon,
-              symbol,
-              attributes: {
-                country: item.country,
-                level: level,
-                item: item,
-              },
-            })
-
-            graphicsLayer.add(graphic)
-          }
-          countryGraphicsRef.current.set(
-            item.country,
-            graphicsLayer.graphics.getItemAt(graphicsLayer.graphics.length - 1)
-          )
-        }
-      }
-    } catch {}
-  }
 }
 
 const hexToRgb = (hex: string): [number, number, number] => {
@@ -427,4 +282,77 @@ const hexToRgb = (hex: string): [number, number, number] => {
 const hexToRgba = (hex: string, alpha: number): string => {
   const [r, g, b] = hexToRgb(hex)
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/** Reduce ring to maxPoints vertices (keeps shape, lowers draw cost). */
+function simplifyRing(ring: number[][], maxPoints: number): number[][] {
+  if (ring.length <= maxPoints) return ring.map((c) => [c[0], c[1]])
+  const step = (ring.length - 1) / (maxPoints - 1)
+  const out: number[][] = []
+  for (let i = 0; i < maxPoints; i++) {
+    const idx = i === maxPoints - 1 ? ring.length - 1 : Math.round(i * step)
+    const c = ring[idx]
+    out.push([c[0], c[1]])
+  }
+  return out
+}
+
+const MAX_RING_POINTS = 200
+
+/** Build an array of Graphics from GeoJSON (sync, no layer). Used to batch addMany. */
+function buildGraphicsFromGeoJson(
+  geoJson: any,
+  item: TravelAdvisoryItem
+): Graphic[] {
+  const out: Graphic[] = []
+  const level = item.level
+  const color = getLevelColor(level)
+  const alpha = level === null ? 0.1 : 0.4
+
+  const makeGraphic = (rings: number[][][]): Graphic => {
+    const rawRing = rings[0].map((c: number[]) => [c[0], c[1]])
+    const outerRing = simplifyRing(rawRing, MAX_RING_POINTS)
+    const polygon = new Polygon({
+      rings: [outerRing],
+      spatialReference: { wkid: 4326 },
+    })
+    const symbol = new SimpleFillSymbol({
+      color: hexToRgba(color, alpha),
+      outline: new SimpleLineSymbol({
+        color: hexToRgba(color, 0.8),
+        width: 1,
+      }),
+    })
+    return new Graphic({
+      geometry: polygon,
+      symbol,
+      attributes: {
+        country: item.country,
+        level: level,
+        item: item,
+      },
+    })
+  }
+
+  const features = (
+    geoJson.type === 'FeatureCollection' && Array.isArray(geoJson.features)
+      ? geoJson.features
+      : geoJson.type === 'Feature'
+        ? [geoJson]
+        : []
+  ) as Array<{ geometry?: any }>
+
+  for (const feature of features) {
+    if (!feature?.geometry) continue
+    const geometry = feature.geometry
+    if (geometry.type === 'Polygon') {
+      out.push(makeGraphic(geometry.coordinates))
+    } else if (geometry.type === 'MultiPolygon') {
+      for (const polygonCoords of geometry.coordinates) {
+        const exteriorRing = polygonCoords[0]
+        if (exteriorRing?.length) out.push(makeGraphic([exteriorRing]))
+      }
+    }
+  }
+  return out
 }
