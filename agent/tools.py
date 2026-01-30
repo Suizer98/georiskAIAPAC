@@ -4,6 +4,7 @@ from typing import Any, Callable
 from urllib.parse import urlencode
 
 import httpx
+from httpx import HTTPStatusError
 from langchain.tools import StructuredTool
 from pydantic import create_model
 
@@ -61,7 +62,35 @@ def _make_tool_fn(mcp_url: str, method: str, path: str) -> Callable[..., Any]:
             response = httpx.request(method, url, params=kwargs, timeout=TIMEOUT_API)
         else:
             response = httpx.request(method, url, json=kwargs, timeout=TIMEOUT_API)
-        response.raise_for_status()
+
+        # GET /api/risk returns 404 when no data for country/city — return "No data found" so the AI can answer clearly.
+        if method == "GET" and path == "/api/risk" and response.status_code == 404:
+            payload = {
+                "found": False,
+                "data": [],
+                "message": "No data found for the specified country or city in the database.",
+            }
+            key = _cache_key(url, kwargs)
+            _GET_CACHE[key] = (time.time(), payload)
+            return payload
+
+        try:
+            response.raise_for_status()
+        except HTTPStatusError as e:
+            if (
+                e.response.status_code == 404
+                and method == "GET"
+                and path == "/api/risk"
+            ):
+                payload = {
+                    "found": False,
+                    "data": [],
+                    "message": "No data found for the specified country or city in the database.",
+                }
+                key = _cache_key(url, kwargs)
+                _GET_CACHE[key] = (time.time(), payload)
+                return payload
+            raise
         try:
             payload = response.json()
         except ValueError:

@@ -53,7 +53,7 @@ export default function ChatList({
               return (
                 <div
                   key={chat.uuid ?? `chat-${index}`}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 hover:border-indigo-400/40"
+                  className="group flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 hover:border-indigo-400/40"
                 >
                   <button
                     type="button"
@@ -96,7 +96,7 @@ export default function ChatList({
                       <button
                         type="button"
                         onClick={() => uuid && setPendingDelete(uuid)}
-                        className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white/10"
                         aria-label="Delete chat"
                       >
                         <TrashIcon />

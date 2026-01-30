@@ -371,11 +371,13 @@ def get_travel_advisories(body: TravelAdvisoriesRequest):
             category = advisory.get("Category")
             country_name, level = _parse_advisory_title(title)
             api_code = _extract_category_code(category) if category is not None else ""
-            raw.append({
-                "api_code": api_code,
-                "country_name": country_name,
-                "level": level,
-            })
+            raw.append(
+                {
+                    "api_code": api_code,
+                    "country_name": country_name,
+                    "level": level,
+                }
+            )
         _cache_travel_advisories_raw = raw
         _cache_travel_advisories_time = now
 

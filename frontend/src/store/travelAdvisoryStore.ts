@@ -55,7 +55,9 @@ export const COUNTRY_CODE_TO_ISO2: Record<string, string> = {
 }
 
 /** APAC ISO2 codes for the map, derived from the dictionary. */
-export const APAC_ISO2_CODES = [...new Set(Object.values(COUNTRY_CODE_TO_ISO2))].sort()
+export const APAC_ISO2_CODES = [
+  ...new Set(Object.values(COUNTRY_CODE_TO_ISO2)),
+].sort()
 
 type TravelAdvisoryState = {
   data: TravelAdvisoryItem[]

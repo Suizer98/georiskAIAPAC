@@ -27,7 +27,10 @@ const WORLD_GEOJSON_URL =
   'https://cdn.jsdelivr.net/gh/datasets/geo-countries@main/data/countries.geojson'
 let worldGeoJsonCache: { type: string; features: any[] } | null = null
 
-async function getWorldGeoJson(): Promise<{ type: string; features: any[] } | null> {
+async function getWorldGeoJson(): Promise<{
+  type: string
+  features: any[]
+} | null> {
   if (
     worldGeoJsonCache?.type === 'FeatureCollection' &&
     Array.isArray(worldGeoJsonCache.features)
@@ -233,11 +236,10 @@ export const useArcGISTravelAdvisoryLayer = (
           )
           if (!countryFeature) continue
 
-          const item: TravelAdvisoryItem =
-            findAdvisory(iso2) ?? {
-              country: iso2,
-              level: null,
-            }
+          const item: TravelAdvisoryItem = findAdvisory(iso2) ?? {
+            country: iso2,
+            level: null,
+          }
 
           const countryGeoJson = {
             type: 'FeatureCollection',

@@ -149,7 +149,9 @@ def _get_country_meta(country: str) -> tuple[str | None, float | None, float | N
     return currency, latitude, longitude
 
 
-def _get_country_meta_by_code(iso2: str) -> tuple[str | None, float | None, float | None]:
+def _get_country_meta_by_code(
+    iso2: str,
+) -> tuple[str | None, float | None, float | None]:
     """Fetch currency and lat/lng by ISO2 code (restcountries /alpha)."""
     # Restcountries uses TW for Taiwan; GeoJSON uses CN-TW
     alpha_code = "TW" if iso2 == "CN-TW" else iso2
