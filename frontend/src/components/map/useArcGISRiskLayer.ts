@@ -23,10 +23,9 @@ export const useArcGISRiskLayer = (
   const animationRef = useRef<number | null>(null)
   const graphicsLayerRef = useRef<GraphicsLayer | null>(null)
 
-  // Set layer title for LayerList widget
   useEffect(() => {
     if (graphicsLayerRef.current) {
-      graphicsLayerRef.current.title = 'Risk Heatmap'
+      graphicsLayerRef.current.title = 'City'
     }
   }, [])
   const heatmapRef = useRef<HeatmapEntry[]>([])
@@ -40,9 +39,8 @@ export const useArcGISRiskLayer = (
       return
     }
 
-    // Create graphics layer with title
     const graphicsLayer = new GraphicsLayer({
-      title: 'Risk Heatmap',
+      title: 'City',
     })
     view.map.add(graphicsLayer)
     graphicsLayerRef.current = graphicsLayer

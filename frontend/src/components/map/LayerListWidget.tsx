@@ -92,8 +92,8 @@ export default function LayerListWidget() {
       },
       {
         id: 'risk',
-        displayName: 'Risk Heatmap',
-        layerTitle: 'Risk Heatmap',
+        displayName: 'City',
+        layerTitle: 'City',
         iconColor: '#f97316',
         iconBorderColor: 'rgba(255, 255, 255, 0.3)',
       },

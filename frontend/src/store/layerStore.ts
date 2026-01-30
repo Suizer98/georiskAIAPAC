@@ -14,7 +14,7 @@ type LayerState = {
 
 export const useLayerStore = create<LayerState>((set) => ({
   layers: [
-    { id: 'risk', label: 'Risk Heatmap', enabled: true },
+    { id: 'risk', label: 'City', enabled: true },
     { id: 'travel_advisory', label: 'Travel Advisory Levels', enabled: true },
     { id: 'price', label: 'Metals Price', enabled: false },
     { id: 'jpmorgan', label: 'JP Morgan Offices', enabled: false },
