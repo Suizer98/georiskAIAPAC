@@ -63,7 +63,6 @@ def _make_tool_fn(mcp_url: str, method: str, path: str) -> Callable[..., Any]:
         else:
             response = httpx.request(method, url, json=kwargs, timeout=TIMEOUT_API)
 
-        # GET /api/risk returns 404 when no data for country/city — return "No data found" so the AI can answer clearly.
         if method == "GET" and path == "/api/risk" and response.status_code == 404:
             payload = {
                 "found": False,

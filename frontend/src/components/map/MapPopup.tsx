@@ -1,6 +1,7 @@
 import React from 'react'
 import Point from '@arcgis/core/geometry/Point'
 import * as Popover from '@radix-ui/react-popover'
+import { formatDate } from '../../utils/chatFormat'
 import type { PriceItem } from '../../store/priceStore'
 import type { RiskItem } from '../../store/riskStore'
 import type { JPMorganOffice } from '../../store/jpmorganStore'
@@ -73,7 +74,7 @@ const PricePopupContent = ({ item }: { item: PriceItem }) => {
       </div>
       {item.retrieved_at && (
         <div className="mt-2 text-xs text-gray-500">
-          Updated: {new Date(item.retrieved_at).toLocaleString()}
+          Updated: {formatDate(item.retrieved_at)}
         </div>
       )}
     </div>
@@ -112,7 +113,7 @@ const RiskPopupContent = ({ item }: { item: RiskItem }) => {
       </div>
       {item.updated_at && (
         <div className="mt-2 text-xs text-gray-500">
-          Updated: {new Date(item.updated_at).toLocaleString()}
+          Updated: {formatDate(item.updated_at)}
         </div>
       )}
     </div>
@@ -203,7 +204,7 @@ const TravelAdvisoryPopupContent = ({ item }: { item: TravelAdvisoryItem }) => {
       </div>
       {item.retrieved_at && (
         <div className="mt-2 text-xs text-gray-500">
-          Updated: {new Date(item.retrieved_at).toLocaleString()}
+          Updated: {formatDate(item.retrieved_at)}
         </div>
       )}
     </div>
