@@ -59,8 +59,8 @@ docker compose exec agent black --check .
 ## Risk calculation references
 - Formula: `Risk = 25*military + 25*(1-economy) + 25*(1-safety) + 15*uncertainty + 10*ambassy_advice` (0–100)
 - Components:
-  - **Military** (25%): GDELT GEO 2.0 API - Conflict intensity events (last 24h)
-  - **Economy** (25%): World Bank GDP per capita (NY.GDP.PCAP.CD) - Inverted (lower GDP = higher risk)
-  - **Safety** (25%): World Bank intentional homicides per 100k (VC.IHR.PSRC.P5) - Inverted (higher homicides = higher risk)
-  - **Uncertainty** (15%): GDELT DOC 2.0 API - Economic policy uncertainty mentions (last 30 days)
-  - **Ambassy Advice** (10%): US State Department Travel Advisory levels (1-4, converted to risk score)
+  - Military (25%): GDELT GEO 2.0 API - Conflict intensity events (last 24h)
+  - Economy (25%): World Bank GDP per capita (NY.GDP.PCAP.CD) - Inverted (lower GDP = higher risk)
+  - Safety (25%): World Bank intentional homicides per 100k (VC.IHR.PSRC.P5) - Inverted (higher homicides = higher risk)
+  - Uncertainty (15%): GDELT DOC 2.0 API - Economic policy uncertainty mentions (last 30 days)
+  - Ambassy Advice (10%): US State Department Travel Advisory levels (1-4, converted to risk score)
