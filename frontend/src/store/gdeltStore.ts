@@ -52,11 +52,7 @@ export const useGdeltStore = create<GdeltState>((set) => ({
           error: null,
           lastSnapshot: snapshot,
           lastEvent: hasChanged
-            ? {
-                type: 'gdelt_updated',
-                at: new Date().toISOString(),
-                query: nextQuery,
-              }
+            ? { type: 'gdelt_updated', at: new Date().toISOString(), query: nextQuery }
             : state.lastEvent,
         }
       })
@@ -65,7 +61,8 @@ export const useGdeltStore = create<GdeltState>((set) => ({
         set({ loading: false })
         return
       }
-      set({ error: 'Unable to load GDELT hotspots.', data: [] })
+      // Keep last data in memory on error (same as risk) so layer does not dim when connection is lost
+      set({ error: 'Unable to load GDELT hotspots.' })
     } finally {
       set({ loading: false })
     }
