@@ -18,7 +18,7 @@ from constant import (
     TIMEOUT_MEDIUM,
     GDELT_TIMESPAN_24H,
     GDELT_TIMESPAN_30D,
-    APAC_ISO2_MAP,
+    SCORING_COUNTRY_NAME_TO_ISO2,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 def _get_iso2_code(country_name: str) -> str:
     # First try static mapping for APAC countries (faster, no API call)
     country_normalized = country_name.strip()
-    if country_normalized in APAC_ISO2_MAP:
-        return APAC_ISO2_MAP[country_normalized]
+    if country_normalized in SCORING_COUNTRY_NAME_TO_ISO2:
+        return SCORING_COUNTRY_NAME_TO_ISO2[country_normalized]
 
     # Fallback to API for other countries (but with longer timeout)
     try:

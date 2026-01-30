@@ -6,6 +6,7 @@ import Polygon from '@arcgis/core/geometry/Polygon'
 import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol'
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol'
 import type { TravelAdvisoryItem } from '../../store/travelAdvisoryStore'
+import { APAC_ISO2_CODES } from '../../store/travelAdvisoryStore'
 import type { MapPopupSelection } from './MapPopup'
 
 const LEVEL_COLORS: Record<number, string> = {
@@ -157,46 +158,17 @@ export const useArcGISTravelAdvisoryLayer = (
       graphicsLayer.removeAll()
       countryGraphicsRef.current.clear()
 
-      const countryToISO3: Record<string, string> = {
-        Australia: 'AUS',
-        Brunei: 'BRN',
-        Cambodia: 'KHM',
-        China: 'CHN',
-        'Hong Kong': 'HKG',
-        India: 'IND',
-        Indonesia: 'IDN',
-        Japan: 'JPN',
-        Laos: 'LAO',
-        Malaysia: 'MYS',
-        Myanmar: 'MMR',
-        'New Zealand': 'NZL',
-        Philippines: 'PHL',
-        Singapore: 'SGP',
-        'South Korea': 'KOR',
-        Taiwan: 'TWN',
-        Thailand: 'THA',
-        Vietnam: 'VNM',
+      /** Look up travel advisory by ISO2 (backend returns country_code=iso2). */
+      const advisoryByIso2 = new Map<string, TravelAdvisoryItem>()
+      for (const item of travelAdvisoryData) {
+        if (item.country) {
+          advisoryByIso2.set(item.country.toUpperCase().trim(), item)
+        }
       }
 
-      const countryToISO2: Record<string, string> = {
-        Australia: 'AU',
-        Brunei: 'BN',
-        Cambodia: 'KH',
-        China: 'CN',
-        'Hong Kong': 'HK',
-        India: 'IN',
-        Indonesia: 'ID',
-        Japan: 'JP',
-        Laos: 'LA',
-        Malaysia: 'MY',
-        Myanmar: 'MM',
-        'New Zealand': 'NZ',
-        Philippines: 'PH',
-        Singapore: 'SG',
-        'South Korea': 'KR',
-        Taiwan: 'TW',
-        Thailand: 'TH',
-        Vietnam: 'VN',
+      const findAdvisory = (iso2: string): TravelAdvisoryItem | null => {
+        const key = iso2.toUpperCase().trim()
+        return advisoryByIso2.get(key) ?? null
       }
 
       let successCount = 0
@@ -222,86 +194,46 @@ export const useArcGISTravelAdvisoryLayer = (
         return
       }
 
-      for (const item of travelAdvisoryData) {
-        if (!item.country) continue
+      /** GeoJSON (geo-countries) uses ISO3166-1-Alpha-2 / iso_a2; match by ISO2 only. */
+      const matchByIso2 = (feature: any, iso2: string): boolean => {
+        const id = feature.id
+        if (
+          id === iso2 ||
+          (typeof id === 'string' && id.toUpperCase() === iso2)
+        ) {
+          return true
+        }
+        const props = feature.properties || {}
+        const propIso2 =
+          props.iso_a2 ??
+          props.ISO_A2 ??
+          props.ISO2 ??
+          props.iso2 ??
+          props.ISO_A2_EH ??
+          props['ISO3166-1-Alpha-2'] ??
+          props['iso3166-1-alpha-2']
+        return (
+          propIso2 != null &&
+          String(propIso2).toUpperCase() === iso2.toUpperCase()
+        )
+      }
 
+      for (const iso2 of APAC_ISO2_CODES) {
         try {
-          const iso3 = countryToISO3[item.country]
-          if (!iso3) {
-            errorCount++
-            continue
-          }
-
-          const iso2 = countryToISO2[item.country]
-          const countryFeature = worldGeoJson.features.find((feature: any) => {
-            if (
-              feature.id === iso3 ||
-              feature.id === iso3.toLowerCase() ||
-              String(feature.id) === iso3
-            ) {
-              return true
-            }
-            if (
-              iso2 &&
-              (feature.id === iso2 ||
-                feature.id === iso2.toLowerCase() ||
-                String(feature.id) === iso2)
-            ) {
-              return true
-            }
-            const props = feature.properties || {}
-            if (
-              props.iso_a3 === iso3 ||
-              props.ISO_A3 === iso3 ||
-              props.ISO3 === iso3 ||
-              props.iso3 === iso3 ||
-              props.ISO_A3_EH === iso3 ||
-              props['ISO3166-1-Alpha-3'] === iso3 ||
-              props['iso3166-1-alpha-3'] === iso3
-            ) {
-              return true
-            }
-            if (
-              iso2 &&
-              (props.iso_a2 === iso2 ||
-                props.ISO_A2 === iso2 ||
-                props.ISO2 === iso2 ||
-                props.iso2 === iso2 ||
-                props.ISO_A2_EH === iso2 ||
-                props['ISO3166-1-Alpha-2'] === iso2 ||
-                props['iso3166-1-alpha-2'] === iso2)
-            ) {
-              return true
-            }
-            const nameFields = [
-              'name',
-              'NAME',
-              'NAME_LONG',
-              'NAME_EN',
-              'NAME_ENG',
-              'admin',
-              'ADMIN',
-              'country',
-              'COUNTRY',
-            ]
-            const countryLower = item.country.toLowerCase()
-
-            for (const field of nameFields) {
-              const name = props[field] || ''
-              const nameLower = name.toLowerCase()
-
-              if (nameLower === countryLower) {
-                return true
-              }
-            }
-
-            return false
-          })
+          const countryFeature = worldGeoJson.features.find((feature: any) =>
+            matchByIso2(feature, iso2)
+          )
 
           if (!countryFeature) {
             errorCount++
             continue
           }
+
+          const item: TravelAdvisoryItem =
+            findAdvisory(iso2) ?? {
+              country: iso2,
+              level: null,
+            }
 
           const countryGeoJson = {
             type: 'FeatureCollection',
@@ -316,7 +248,7 @@ export const useArcGISTravelAdvisoryLayer = (
       }
     }
 
-    if (enabled && travelAdvisoryData.length > 0) {
+    if (enabled) {
       loadCountryBoundaries()
     }
   }, [travelAdvisoryData, enabled, viewRef])

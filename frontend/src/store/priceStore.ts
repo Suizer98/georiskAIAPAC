@@ -1,4 +1,8 @@
 import { create } from 'zustand'
+import { APAC_ISO2_CODES } from './travelAdvisoryStore'
+
+/** ISO2 country codes to request price data for (same APAC set as travel advisory map). */
+export const PRICE_COUNTRY_CODES = [...APAC_ISO2_CODES]
 
 export type PriceItem = {
   country: string
@@ -30,7 +34,12 @@ export const usePriceStore = create<PriceState>((set) => ({
   fetchPrices: async (signal) => {
     set({ loading: true, error: null })
     try {
-      const response = await fetch('/api/price', { signal })
+      const response = await fetch('/api/price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ country_codes: PRICE_COUNTRY_CODES }),
+        signal,
+      })
       if (!response.ok) {
         throw new Error(`Failed to load price data (${response.status})`)
       }

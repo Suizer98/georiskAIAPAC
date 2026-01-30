@@ -184,7 +184,9 @@ const TravelAdvisoryPopupContent = ({ item }: { item: TravelAdvisoryItem }) => {
       <div className="space-y-1 text-sm">
         <div className="flex justify-between gap-4">
           <span className="text-gray-400">Country</span>
-          <span className="font-mono text-gray-200">{item.country}</span>
+          <span className="text-gray-200">
+            {item.country_name ?? item.country}
+          </span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-gray-400">Advisory Level</span>

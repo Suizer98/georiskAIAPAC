@@ -2,34 +2,7 @@
 
 from datetime import timedelta
 
-# Countries
-# APAC (Asia-Pacific) region includes:
-# - East Asia: China, Japan, South Korea, Taiwan, Hong Kong
-# - Southeast Asia: All 10 ASEAN countries
-# - South Asia: India
-# - Oceania: Australia, New Zealand
-APAC_COUNTRIES = [
-    "Australia",
-    "Brunei",
-    "Cambodia",
-    "China",
-    "Hong Kong",
-    "India",
-    "Indonesia",
-    "Japan",
-    "Laos",
-    "Malaysia",
-    "Myanmar",
-    "New Zealand",
-    "Philippines",
-    "Singapore",
-    "South Korea",
-    "Taiwan",
-    "Thailand",
-    "Vietnam",
-]
-
-# Place name -> (latitude, longitude) for map_zoom_to_place (APAC countries + major cities)
+# Place/city names → (lon, lat) for map actions (fly-to, center map, etc.).
 PLACE_TO_COORDINATES: dict[str, tuple[float, float]] = {
     "singapore": (1.3521, 103.8198),
     "jakarta": (-6.2088, 106.8456),
@@ -73,9 +46,10 @@ PLACE_TO_COORDINATES: dict[str, tuple[float, float]] = {
     "new zealand": (-40.9006, 174.8860),
 }
 
-# ISO2 code mapping for APAC countries (to avoid API calls)
-APAC_ISO2_MAP = {
+# Country name → ISO2 for scoring (country normalization).
+SCORING_COUNTRY_NAME_TO_ISO2: dict[str, str] = {
     "Australia": "AU",
+    "Bangladesh": "BD",
     "Brunei": "BN",
     "Cambodia": "KH",
     "China": "CN",
@@ -87,9 +61,13 @@ APAC_ISO2_MAP = {
     "Malaysia": "MY",
     "Myanmar": "MM",
     "New Zealand": "NZ",
+    "North Korea": "KP",
+    "Papua New Guinea": "PG",
     "Philippines": "PH",
+    "Russia": "RU",
     "Singapore": "SG",
     "South Korea": "KR",
+    "Sri Lanka": "LK",
     "Taiwan": "TW",
     "Thailand": "TH",
     "Vietnam": "VN",
@@ -101,6 +79,7 @@ CACHE_TTL = timedelta(minutes=CACHE_TTL_MINUTES)
 
 # API URLs
 RESTCOUNTRIES_API_URL = "https://restcountries.com/v3.1/name"
+RESTCOUNTRIES_ALPHA_URL = "https://restcountries.com/v3.1/alpha"
 WORLDBANK_API_URL = "https://api.worldbank.org/v2/country"
 GDELT_DOC_API_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 GDELT_GEO_API_URL = "https://api.gdeltproject.org/api/v2/geo/geo"

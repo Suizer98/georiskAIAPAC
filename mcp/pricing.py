@@ -8,9 +8,9 @@ from typing import Any
 import httpx
 
 from constant import (
-    APAC_COUNTRIES,
     CACHE_TTL,
     RESTCOUNTRIES_API_URL,
+    RESTCOUNTRIES_ALPHA_URL,
     EXCHANGERATE_API_URL,
     METALPRICE_API_URL,
     GOLDPRICE_API_URL,
@@ -24,6 +24,7 @@ from constant import (
 logger = logging.getLogger(__name__)
 _cache_payload: dict[str, Any] | None = None
 _cache_time: datetime | None = None
+_cache_key: tuple[str, ...] = ()
 
 
 def _parse_metals_live(payload: Any) -> dict[str, float | None]:
@@ -148,24 +149,53 @@ def _get_country_meta(country: str) -> tuple[str | None, float | None, float | N
     return currency, latitude, longitude
 
 
-def list_price_data() -> dict[str, Any]:
-    global _cache_payload, _cache_time
-    now = datetime.utcnow()
-    if _cache_payload and _cache_time and now - _cache_time < CACHE_TTL:
-        return _cache_payload
+def _get_country_meta_by_code(iso2: str) -> tuple[str | None, float | None, float | None]:
+    """Fetch currency and lat/lng by ISO2 code (restcountries /alpha)."""
+    # Restcountries uses TW for Taiwan; GeoJSON uses CN-TW
+    alpha_code = "TW" if iso2 == "CN-TW" else iso2
+    url = f"{RESTCOUNTRIES_ALPHA_URL}/{alpha_code}"
+    resp = httpx.get(url, timeout=TIMEOUT_MEDIUM)
+    resp.raise_for_status()
+    payload = resp.json()
+    if isinstance(payload, list) and payload:
+        entry = payload[0]
+    elif isinstance(payload, dict):
+        entry = payload
+    else:
+        raise ValueError("Country not found")
+    currencies = entry.get("currencies") or {}
+    currency = None
+    if isinstance(currencies, dict) and currencies:
+        currency = next(iter(currencies.keys()))
+    latlng = entry.get("latlng", [None, None])
+    latitude = latlng[0] if isinstance(latlng, list) and len(latlng) > 0 else None
+    longitude = latlng[1] if isinstance(latlng, list) and len(latlng) > 1 else None
+    return currency, latitude, longitude
 
+
+def list_price_data(country_codes: list[str] | None = None) -> dict[str, Any]:
+    """Return price data for the given ISO2 country codes (from frontend)."""
+    global _cache_payload, _cache_time, _cache_key
+    codes = country_codes or []
+    cache_key = tuple(sorted(codes)) if codes else ()
+
+    if cache_key and _cache_key == cache_key and _cache_payload and _cache_time:
+        if datetime.utcnow() - _cache_time < CACHE_TTL:
+            return _cache_payload
+
+    now = datetime.utcnow()
     metals, metals_source = _get_metals_spot()
     fx_rates = _get_fx_rates_usd()
     items: list[dict[str, Any]] = []
 
-    for country in APAC_COUNTRIES:
+    for iso2 in codes:
         currency = None
         latitude = None
         longitude = None
         try:
-            currency, latitude, longitude = _get_country_meta(country)
+            currency, latitude, longitude = _get_country_meta_by_code(iso2)
         except Exception as exc:
-            logger.warning("country_meta_error country=%s err=%s", country, exc)
+            logger.warning("country_meta_error iso2=%s err=%s", iso2, exc)
 
         fx_rate = fx_rates.get(currency, None) if currency else None
         gold_usd = metals.get("gold")
@@ -175,7 +205,7 @@ def list_price_data() -> dict[str, Any]:
 
         items.append(
             {
-                "country": country,
+                "country": iso2,
                 "currency": currency,
                 "latitude": latitude,
                 "longitude": longitude,
@@ -196,9 +226,10 @@ def list_price_data() -> dict[str, Any]:
         "sources": {
             "metals": metals_source,
             "fx": ER_API_URL,
-            "country": RESTCOUNTRIES_API_URL,
+            "country": RESTCOUNTRIES_ALPHA_URL,
         },
     }
     _cache_payload = payload
     _cache_time = now
+    _cache_key = cache_key
     return payload
