@@ -52,7 +52,11 @@ export const useGdeltStore = create<GdeltState>((set) => ({
           error: null,
           lastSnapshot: snapshot,
           lastEvent: hasChanged
-            ? { type: 'gdelt_updated', at: new Date().toISOString(), query: nextQuery }
+            ? {
+                type: 'gdelt_updated',
+                at: new Date().toISOString(),
+                query: nextQuery,
+              }
             : state.lastEvent,
         }
       })

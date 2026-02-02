@@ -44,18 +44,31 @@ export default function LayerListWidget() {
 
     switch (id) {
       case 'risk':
-        return (riskLoading || (isEnabled && riskData.length === 0)) && riskData.length === 0
+        return (
+          (riskLoading || (isEnabled && riskData.length === 0)) &&
+          riskData.length === 0
+        )
       case 'price':
-        return (priceLoading || (isEnabled && priceData.length === 0)) && priceData.length === 0
+        return (
+          (priceLoading || (isEnabled && priceData.length === 0)) &&
+          priceData.length === 0
+        )
       case 'jpmorgan':
-        return (jpmorganLoading || (isEnabled && jpmorganData.length === 0)) && jpmorganData.length === 0
+        return (
+          (jpmorganLoading || (isEnabled && jpmorganData.length === 0)) &&
+          jpmorganData.length === 0
+        )
       case 'travel_advisory':
         return (
-          (travelAdvisoryLoading || (isEnabled && travelAdvisoryData.length === 0)) &&
+          (travelAdvisoryLoading ||
+            (isEnabled && travelAdvisoryData.length === 0)) &&
           travelAdvisoryData.length === 0
         )
       case 'gdelt':
-        return (gdeltLoading || (isEnabled && gdeltData.length === 0)) && gdeltData.length === 0
+        return (
+          (gdeltLoading || (isEnabled && gdeltData.length === 0)) &&
+          gdeltData.length === 0
+        )
       default:
         return false
     }

@@ -31,21 +31,17 @@ async def startup():
             db.close()
         logging.getLogger(__name__).info("risk_data_count_after_seed=%s", count_after)
 
-    # On startup: query GDELT military (lat/lon) and write to DB so frontend GET /api/gdelt returns data without calling GDELT API.
+    # Seed GDELT military only when gdelt_display is empty.
     db = SessionLocal()
     try:
+        if db.query(GdeltDisplay.id).first() is not None:
+            return
         query, timespan, features = await _fetch_gdelt_hotspots(
             "military", GDELT_HOTSPOT_TIMESPAN
         )
-        row = db.query(GdeltDisplay).first()
-        if row:
-            row.query = query
-            row.timespan = timespan
-            row.set_features(features)
-        else:
-            row = GdeltDisplay(query=query, timespan=timespan)
-            row.set_features(features)
-            db.add(row)
+        row = GdeltDisplay(query=query, timespan=timespan)
+        row.set_features(features)
+        db.add(row)
         db.commit()
         logging.getLogger(__name__).info("gdelt_display_on_startup query=%s", query)
     finally:
