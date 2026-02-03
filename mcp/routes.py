@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 import httpx
+import requests
 from opensky_api import OpenSkyApi
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from ddgs import DDGS
 
@@ -581,29 +582,26 @@ async def get_opensky_states():
     username = os.getenv("OPENSKY_USERNAME") or None
     password = os.getenv("OPENSKY_PASSWORD") or None
     api = OpenSkyApi(username, password)
-    bbox = (
-        APAC_LAT_MIN,
-        APAC_LAT_MAX,
-        APAC_LON_MIN,
-        APAC_LON_MAX,
-    )  # min_lat, max_lat, min_lon, max_lon
-    result = await asyncio.to_thread(api.get_states, 0, None, bbox)
+    bbox = (APAC_LAT_MIN, APAC_LAT_MAX, APAC_LON_MIN, APAC_LON_MAX)  # min_lat, max_lat, min_lon, max_lon
+    try:
+        result = await asyncio.to_thread(api.get_states, 0, None, bbox)
+    except requests.exceptions.RequestException as e:
+        logging.warning("OpenSky API unreachable: %s", e)
+        return []
     if not result or not result.states:
         return []
     out = []
     for s in result.states:
         if s.latitude is None or s.longitude is None:
             continue
-        out.append(
-            {
-                "icao24": s.icao24,
-                "callsign": (s.callsign or "").strip() or None,
-                "latitude": s.latitude,
-                "longitude": s.longitude,
-                "baro_altitude": s.baro_altitude,
-                "true_track": getattr(s, "true_track", None),
-            }
-        )
+        out.append({
+            "icao24": s.icao24,
+            "callsign": (s.callsign or "").strip() or None,
+            "latitude": s.latitude,
+            "longitude": s.longitude,
+            "baro_altitude": s.baro_altitude,
+            "true_track": getattr(s, "true_track", None),
+        })
     return out
 
 

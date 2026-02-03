@@ -19,7 +19,7 @@ type RadarState = {
 
 const RADAR_POLL_MS = 15000
 
-export const useRadarStore = create<RadarState>((set, get) => ({
+export const useRadarStore = create<RadarState>((set) => ({
   data: [],
   loading: false,
   error: null,
@@ -57,12 +57,17 @@ export const useRadarStore = create<RadarState>((set, get) => ({
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 
-// Default polling is false for rate limit
-export function startRadarPolling(polling = false) {
-  const fetch = () => useRadarStore.getState().fetchRadar()
-  fetch()
-  if (pollTimer) clearInterval(pollTimer)
-  if (polling) pollTimer = setInterval(fetch, RADAR_POLL_MS)
+// When polling is true, interval only runs if the first fetch returns non-empty data.
+// If data is [], we fetch once and do not poll (avoids hammering when OpenSky is unreachable).
+export async function startRadarPolling(polling = false) {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+  await useRadarStore.getState().fetchRadar()
+  if (polling && useRadarStore.getState().data.length > 0) {
+    pollTimer = setInterval(() => useRadarStore.getState().fetchRadar(), RADAR_POLL_MS)
+  }
 }
 
 export function stopRadarPolling() {

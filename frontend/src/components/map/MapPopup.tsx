@@ -1,4 +1,3 @@
-import React from 'react'
 import Point from '@arcgis/core/geometry/Point'
 import * as Popover from '@radix-ui/react-popover'
 import { formatDate } from '../../utils/chatFormat'

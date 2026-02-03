@@ -7,6 +7,7 @@ import { useChatStore } from '../../store/chatStore'
 import { useRiskStore } from '../../store/riskStore'
 import { usePriceStore } from '../../store/priceStore'
 import { useTravelAdvisoryStore } from '../../store/travelAdvisoryStore'
+import { useRadarStore } from '../../store/radarStore'
 import Clock from './Clock'
 
 export default function TopBar() {
@@ -23,17 +24,14 @@ export default function TopBar() {
   const travelAdvisoryLoading = useTravelAdvisoryStore((state) => state.loading)
   const travelAdvisoryData = useTravelAdvisoryStore((state) => state.data)
   const travelAdvisoryError = useTravelAdvisoryStore((state) => state.error)
+  const radarLoading = useRadarStore((state) => state.loading)
+  const radarData = useRadarStore((state) => state.data)
+  const radarError = useRadarStore((state) => state.error)
 
   const isRiskActive = location.pathname.startsWith('/risk')
   const isMarketActive = location.pathname.startsWith('/market')
   const isRadarActive = location.pathname.startsWith('/radar')
-  const activeTab = isRiskActive
-    ? 'risk'
-    : isMarketActive
-      ? 'market'
-      : isRadarActive
-        ? 'radar'
-        : 'risk'
+  const activeTab = isRiskActive ? 'risk' : isMarketActive ? 'market' : isRadarActive ? 'radar' : 'risk'
 
   // Show loading if:
   // 1. Actively loading, OR
@@ -44,10 +42,13 @@ export default function TopBar() {
   const travelAdvisoryNeedsLoading =
     travelAdvisoryLoading ||
     (travelAdvisoryData.length === 0 && !travelAdvisoryError)
+  const radarNeedsLoading =
+    radarLoading || (radarData.length === 0 && !radarError)
   const isLoading =
     (activeTab === 'risk' &&
       (riskNeedsLoading || travelAdvisoryNeedsLoading)) ||
-    (activeTab === 'market' && priceNeedsLoading)
+    (activeTab === 'market' && priceNeedsLoading) ||
+    (activeTab === 'radar' && radarNeedsLoading)
 
   return (
     <header className="fixed left-0 right-0 top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur">
@@ -121,7 +122,11 @@ export default function TopBar() {
         <div className="relative h-0.5 w-full overflow-hidden bg-slate-800/50">
           <div
             className={`absolute left-0 top-0 h-full w-1/3 ${
-              activeTab === 'risk' ? 'bg-indigo-400/60' : 'bg-amber-400/60'
+              activeTab === 'risk'
+                ? 'bg-indigo-400/60'
+                : activeTab === 'market'
+                  ? 'bg-amber-400/60'
+                  : 'bg-sky-400/60'
             }`}
             style={{
               animation: 'shimmer 1.5s ease-in-out infinite',
