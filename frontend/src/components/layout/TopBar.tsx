@@ -25,7 +25,15 @@ export default function TopBar() {
   const travelAdvisoryError = useTravelAdvisoryStore((state) => state.error)
 
   const isRiskActive = location.pathname.startsWith('/risk')
-  const activeTab = isRiskActive ? 'risk' : 'market'
+  const isMarketActive = location.pathname.startsWith('/market')
+  const isRadarActive = location.pathname.startsWith('/radar')
+  const activeTab = isRiskActive
+    ? 'risk'
+    : isMarketActive
+      ? 'market'
+      : isRadarActive
+        ? 'radar'
+        : 'risk'
 
   // Show loading if:
   // 1. Actively loading, OR
@@ -91,6 +99,12 @@ export default function TopBar() {
                 className="rounded-full border px-4 py-2 text-sm font-medium transition data-[state=active]:border-amber-300/70 data-[state=active]:bg-amber-400/20 data-[state=active]:text-amber-100 border-white/15 bg-white/5 text-white hover:bg-white/10"
               >
                 Market
+              </Tabs.Trigger>
+              <Tabs.Trigger
+                value="radar"
+                className="rounded-full border px-4 py-2 text-sm font-medium transition data-[state=active]:border-sky-400/70 data-[state=active]:bg-sky-500/20 data-[state=active]:text-sky-100 border-white/15 bg-white/5 text-white hover:bg-white/10"
+              >
+                Radar
               </Tabs.Trigger>
             </Tabs.List>
           </Tabs.Root>

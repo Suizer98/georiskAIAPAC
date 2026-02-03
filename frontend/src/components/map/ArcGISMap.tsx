@@ -11,6 +11,7 @@ import { usePriceStore } from '../../store/priceStore'
 import { useJPMorganStore } from '../../store/jpmorganStore'
 import { useTravelAdvisoryStore } from '../../store/travelAdvisoryStore'
 import { useGdeltStore } from '../../store/gdeltStore'
+import { useRadarStore } from '../../store/radarStore'
 import { useLayerStore } from '../../store/layerStore'
 import { useArcGISViewer } from './useArcGISViewer'
 import { useArcGISRiskLayer } from './useArcGISRiskLayer'
@@ -18,6 +19,7 @@ import { useArcGISPriceLayer } from './useArcGISPriceLayer'
 import { useArcGISJPMorganLayer } from './useArcGISJPMorganLayer'
 import { useArcGISTravelAdvisoryLayer } from './useArcGISTravelAdvisoryLayer'
 import { useArcGISGdeltLayer } from './useArcGISGdeltLayer'
+import { useArcGISRadarLayer } from './useArcGISRadarLayer'
 import { useMapActions } from './useMapActions'
 import { useLocation } from 'react-router-dom'
 import LayerListWidget from './LayerListWidget'
@@ -47,8 +49,11 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
   const gdeltData = useGdeltStore((state) => state.data)
   const gdeltQuery = useGdeltStore((state) => state.query)
   const fetchGdelt = useGdeltStore((state) => state.fetchGdelt)
+  const radarData = useRadarStore((state) => state.data)
+  const fetchRadar = useRadarStore((state) => state.fetchRadar)
   const location = useLocation()
   const isRiskRoute = location.pathname.startsWith('/risk')
+  const isRadarRoute = location.pathname.startsWith('/radar')
 
   const riskLayerEnabled = useLayerStore(
     (state) =>
@@ -71,6 +76,10 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
     (state) =>
       state.layers.find((layer) => layer.id === 'gdelt')?.enabled ?? false
   )
+  const radarLayerEnabled = useLayerStore(
+    (state) =>
+      state.layers.find((layer) => layer.id === 'radar')?.enabled ?? false
+  )
 
   const handleSelect = useCallback((data: MapPopupSelection | null) => {
     setPopupData(data)
@@ -83,6 +92,12 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
     gdeltData,
     isRiskRoute && gdeltLayerEnabled,
     gdeltQuery,
+    handleSelect
+  )
+  useArcGISRadarLayer(
+    viewRef,
+    radarData,
+    isRadarRoute && radarLayerEnabled,
     handleSelect
   )
   useArcGISJPMorganLayer(
@@ -148,6 +163,14 @@ export default function ArcGISMap({ className, style }: ArcGISMapProps) {
     }
     return () => controller.abort()
   }, [isRiskRoute, gdeltLayerEnabled, fetchGdelt])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    if (isRadarRoute && radarLayerEnabled) {
+      fetchRadar(controller.signal)
+    }
+    return () => controller.abort()
+  }, [isRadarRoute, radarLayerEnabled, fetchRadar])
 
   useEffect(() => {
     popupRef.current = popupData

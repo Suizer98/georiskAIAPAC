@@ -8,11 +8,9 @@ export type TravelAdvisoryItem = {
   retrieved_at?: string
 }
 
-/**
- * Single source of truth: any country code (State Dept API or ISO2) → ISO2.
- * - API codes (JA, CE, …) map to ISO2 for backend; ISO2 keys are identity (JP→JP).
- * - Backend receives this as api_code_to_iso2; map uses unique values for GeoJSON matching.
- */
+// Single source of truth: any country code (State Dept API or ISO2) → ISO2.
+// API codes (JA, CE, …) map to ISO2 for backend; ISO2 keys are identity (JP→JP).
+// Backend receives this as api_code_to_iso2; map uses unique values for GeoJSON matching.
 export const COUNTRY_CODE_TO_ISO2: Record<string, string> = {
   CE: 'LK',
   KN: 'KP',
@@ -54,7 +52,7 @@ export const COUNTRY_CODE_TO_ISO2: Record<string, string> = {
   VN: 'VN',
 }
 
-/** APAC ISO2 codes for the map, derived from the dictionary. */
+// APAC ISO2 codes for the map, derived from the dictionary.
 export const APAC_ISO2_CODES = [
   ...new Set(Object.values(COUNTRY_CODE_TO_ISO2)),
 ].sort()

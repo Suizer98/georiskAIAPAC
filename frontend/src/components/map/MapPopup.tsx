@@ -8,6 +8,7 @@ import type { JPMorganOffice } from '../../store/jpmorganStore'
 import type { TravelAdvisoryItem } from '../../store/travelAdvisoryStore'
 import type { GdeltHotspot } from '../../store/gdeltStore'
 import { useGdeltStore } from '../../store/gdeltStore'
+import type { RadarStateItem } from '../../store/radarStore'
 
 export type MapPopupPayload =
   | { type: 'price'; item: PriceItem }
@@ -15,6 +16,7 @@ export type MapPopupPayload =
   | { type: 'jpmorgan'; office: JPMorganOffice }
   | { type: 'travel_advisory'; item: TravelAdvisoryItem }
   | { type: 'gdelt'; item: GdeltHotspot; query: string }
+  | { type: 'radar'; item: RadarStateItem }
 
 export type MapPopupSelection = {
   x: number
@@ -247,6 +249,46 @@ function GdeltPopupContentWithQuery({ item }: { item: GdeltHotspot }) {
   return <GdeltPopupContent item={item} query={query} />
 }
 
+const RadarPopupContent = ({ item }: { item: RadarStateItem }) => (
+  <div className="space-y-2">
+    <div className="text-lg font-bold">Flight</div>
+    <div className="space-y-1 text-sm">
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-400">Callsign</span>
+        <span className="font-mono text-gray-200">
+          {item.callsign ?? item.icao24 ?? '—'}
+        </span>
+      </div>
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-400">ICAO24</span>
+        <span className="font-mono text-gray-200">{item.icao24 ?? '—'}</span>
+      </div>
+      <div className="flex justify-between gap-4">
+        <span className="text-gray-400">Position</span>
+        <span className="font-mono text-gray-200">
+          {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
+        </span>
+      </div>
+      {item.baro_altitude != null && (
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-400">Altitude</span>
+          <span className="font-mono text-gray-200">
+            {Math.round(item.baro_altitude)} m
+          </span>
+        </div>
+      )}
+      {item.true_track != null && (
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-400">Heading</span>
+          <span className="font-mono text-gray-200">
+            {Math.round(item.true_track)}°
+          </span>
+        </div>
+      )}
+    </div>
+  </div>
+)
+
 export default function MapPopup({ x, y, payload, onClose }: MapPopupProps) {
   const content =
     payload.type === 'price' ? (
@@ -257,6 +299,8 @@ export default function MapPopup({ x, y, payload, onClose }: MapPopupProps) {
       <JPMorganPopupContent office={payload.office} />
     ) : payload.type === 'gdelt' ? (
       <GdeltPopupContentWithQuery item={payload.item} />
+    ) : payload.type === 'radar' ? (
+      <RadarPopupContent item={payload.item} />
     ) : (
       <TravelAdvisoryPopupContent item={payload.item} />
     )

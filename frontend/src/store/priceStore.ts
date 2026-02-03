@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { APAC_ISO2_CODES } from './travelAdvisoryStore'
 
-/** ISO2 country codes to request price data for (same APAC set as travel advisory map). */
+// ISO2 country codes to request price data for (same APAC set as travel advisory map).
 export const PRICE_COUNTRY_CODES = [...APAC_ISO2_CODES]
 
 export type PriceItem = {

@@ -8,6 +8,7 @@ import * as riskStore from './store/riskStore'
 import { useRiskStore } from './store/riskStore'
 import * as gdeltStore from './store/gdeltStore'
 import { useGdeltStore } from './store/gdeltStore'
+import * as radarStore from './store/radarStore'
 import { useLayerStore } from './store/layerStore'
 
 function App() {
@@ -28,14 +29,31 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (location.pathname.startsWith('/radar')) {
+      radarStore.startRadarPolling(false) // true = refetch on interval
+      return radarStore.stopRadarPolling
+    }
+  }, [location.pathname])
+
+  useEffect(() => {
     if (location.pathname.startsWith('/market')) {
       setLayer('risk', false)
       setLayer('travel_advisory', false)
       setLayer('jpmorgan', false)
+      setLayer('radar', false)
       setLayer('price', true)
       return
     }
+    if (location.pathname.startsWith('/radar')) {
+      setLayer('price', false)
+      setLayer('risk', false)
+      setLayer('travel_advisory', false)
+      setLayer('jpmorgan', false)
+      setLayer('radar', true)
+      return
+    }
     setLayer('price', false)
+    setLayer('radar', false)
     setLayer('risk', true)
     setLayer('travel_advisory', true)
     setLayer('jpmorgan', true)
@@ -61,6 +79,7 @@ function App() {
           <Route path="/" element={<Navigate to="/risk" replace />} />
           <Route path="/risk" element={null} />
           <Route path="/market" element={null} />
+          <Route path="/radar" element={null} />
         </Routes>
       </div>
       <Toast.Root

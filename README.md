@@ -29,7 +29,11 @@ GEMINI_MODEL=gemini-1.5-flash
 
 VITE_BACKEND_MCP=http://localhost:8000
 VITE_BACKEND_AGENT=http://localhost:7000
+
+OPENSKY_USERNAME=
+OPENSKY_PASSWORD=
 ```
+Optional: [OpenSky](https://github.com/openskynetwork/opensky-api) credentials for `/api/opensky/states` (current flights over APAC); otherwise anonymous rate limits apply.
 
 ## Seed risk data manually when instance is up
 ```

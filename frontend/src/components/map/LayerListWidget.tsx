@@ -8,9 +8,10 @@ import { usePriceStore } from '../../store/priceStore'
 import { useJPMorganStore } from '../../store/jpmorganStore'
 import { useTravelAdvisoryStore } from '../../store/travelAdvisoryStore'
 import { useGdeltStore } from '../../store/gdeltStore'
+import { useRadarStore } from '../../store/radarStore'
 
 type LegendItem = {
-  id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory' | 'gdelt'
+  id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory' | 'gdelt' | 'radar'
   displayName: string
   layerTitle: string
   iconColor: string
@@ -34,11 +35,13 @@ export default function LayerListWidget() {
   const travelAdvisoryData = useTravelAdvisoryStore((state) => state.data)
   const gdeltLoading = useGdeltStore((state) => state.loading)
   const gdeltData = useGdeltStore((state) => state.data)
+  const radarLoading = useRadarStore((state) => state.loading)
+  const radarData = useRadarStore((state) => state.data)
 
   // A layer is "loading" (dim + toggle disabled) only when it has no data yet.
   // Once we have data (including after offline), allow toggle on/off like other layers.
   const getLayerLoading = (
-    id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory' | 'gdelt'
+    id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory' | 'gdelt' | 'radar'
   ) => {
     const isEnabled = layers.find((layer) => layer.id === id)?.enabled ?? false
 
@@ -69,6 +72,11 @@ export default function LayerListWidget() {
           (gdeltLoading || (isEnabled && gdeltData.length === 0)) &&
           gdeltData.length === 0
         )
+      case 'radar':
+        return (
+          (radarLoading || (isEnabled && radarData.length === 0)) &&
+          radarData.length === 0
+        )
       default:
         return false
     }
@@ -77,6 +85,7 @@ export default function LayerListWidget() {
   // Determine which legend items to show based on route
   const legendItems = useMemo<LegendItem[]>(() => {
     const isMarketRoute = location.pathname.startsWith('/market')
+    const isRadarRoute = location.pathname.startsWith('/radar')
 
     if (isMarketRoute) {
       return [
@@ -86,6 +95,18 @@ export default function LayerListWidget() {
           layerTitle: 'Metals Price',
           iconColor: '#d4af37',
           iconBorderColor: 'rgba(0, 0, 0, 0.3)',
+        },
+      ]
+    }
+
+    if (isRadarRoute) {
+      return [
+        {
+          id: 'radar',
+          displayName: 'Flights',
+          layerTitle: 'Flights',
+          iconColor: '#38bdf8',
+          iconBorderColor: 'rgba(255, 255, 255, 0.3)',
         },
       ]
     }
@@ -125,7 +146,7 @@ export default function LayerListWidget() {
 
   // Get layer visibility state
   const getLayerVisibility = (
-    id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory' | 'gdelt'
+    id: 'risk' | 'jpmorgan' | 'price' | 'travel_advisory' | 'gdelt' | 'radar'
   ) => {
     return layers.find((layer) => layer.id === id)?.enabled ?? false
   }

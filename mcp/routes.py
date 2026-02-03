@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 import asyncio
 from urllib.parse import urljoin
@@ -8,6 +9,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import httpx
+from opensky_api import OpenSkyApi
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -571,6 +573,38 @@ async def post_gdelt_hotspots(body: GdeltPostRequest, db: Session = Depends(get_
         {"type": "gdelt_updated", "at": datetime.utcnow().isoformat() + "Z"}
     )
     return {"query": query, "timespan": timespan, "features": features}
+
+
+@router.get("/api/opensky/states")
+async def get_opensky_states():
+    """Current flight states over APAC for frontend map. Credentials from .env (optional)."""
+    username = os.getenv("OPENSKY_USERNAME") or None
+    password = os.getenv("OPENSKY_PASSWORD") or None
+    api = OpenSkyApi(username, password)
+    bbox = (
+        APAC_LAT_MIN,
+        APAC_LAT_MAX,
+        APAC_LON_MIN,
+        APAC_LON_MAX,
+    )  # min_lat, max_lat, min_lon, max_lon
+    result = await asyncio.to_thread(api.get_states, 0, None, bbox)
+    if not result or not result.states:
+        return []
+    out = []
+    for s in result.states:
+        if s.latitude is None or s.longitude is None:
+            continue
+        out.append(
+            {
+                "icao24": s.icao24,
+                "callsign": (s.callsign or "").strip() or None,
+                "latitude": s.latitude,
+                "longitude": s.longitude,
+                "baro_altitude": s.baro_altitude,
+                "true_track": getattr(s, "true_track", None),
+            }
+        )
+    return out
 
 
 def _mcp_tools_payload() -> list[dict]:

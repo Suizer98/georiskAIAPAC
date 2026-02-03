@@ -206,7 +206,7 @@ export const useArcGISTravelAdvisoryLayer = (
       graphicsLayer.removeAll()
       countryGraphicsRef.current.clear()
 
-      /** Look up travel advisory by ISO2 (backend returns country_code=iso2). */
+      // Look up travel advisory by ISO2 (backend returns country_code=iso2).
       const advisoryByIso2 = new Map<string, TravelAdvisoryItem>()
       for (const item of travelAdvisoryData) {
         if (item.country) {
@@ -222,7 +222,7 @@ export const useArcGISTravelAdvisoryLayer = (
       const worldGeoJson = await getWorldGeoJson()
       if (!worldGeoJson) return
 
-      /** GeoJSON (geo-countries) uses ISO3166-1-Alpha-2 / iso_a2; match by ISO2 only. */
+      // GeoJSON (geo-countries) uses ISO3166-1-Alpha-2 / iso_a2; match by ISO2 only.
       const matchByIso2 = (feature: any, iso2: string): boolean => {
         const id = feature.id
         if (
@@ -306,7 +306,7 @@ const hexToRgba = (hex: string, alpha: number): string => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
-/** Reduce ring to maxPoints vertices (keeps shape, lowers draw cost). */
+// Reduce ring to maxPoints vertices (keeps shape, lowers draw cost).
 function simplifyRing(ring: number[][], maxPoints: number): number[][] {
   if (ring.length <= maxPoints) return ring.map((c) => [c[0], c[1]])
   const step = (ring.length - 1) / (maxPoints - 1)
@@ -321,7 +321,7 @@ function simplifyRing(ring: number[][], maxPoints: number): number[][] {
 
 const MAX_RING_POINTS = 200
 
-/** Build an array of Graphics from GeoJSON (sync, no layer). Used to batch addMany. */
+// Build an array of Graphics from GeoJSON (sync, no layer). Used to batch addMany.
 function buildGraphicsFromGeoJson(
   geoJson: any,
   item: TravelAdvisoryItem
