@@ -66,7 +66,10 @@ export async function startRadarPolling(polling = false) {
   }
   await useRadarStore.getState().fetchRadar()
   if (polling && useRadarStore.getState().data.length > 0) {
-    pollTimer = setInterval(() => useRadarStore.getState().fetchRadar(), RADAR_POLL_MS)
+    pollTimer = setInterval(
+      () => useRadarStore.getState().fetchRadar(),
+      RADAR_POLL_MS
+    )
   }
 }
 

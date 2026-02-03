@@ -184,19 +184,9 @@ export default function LayerListWidget() {
       {/* Custom Legend */}
       {isOpen && (
         <div className="fixed top-[150px] right-[15px] z-40 w-[250px] rounded-lg border border-white/15 bg-slate-900/90 backdrop-blur-sm shadow-lg">
-          <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
-            <div className="flex items-center gap-2">
-              <LayersIcon className="h-4 w-4 text-white/80" />
-              <span className="text-xs font-medium text-white/80">Layers</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="flex h-6 w-6 items-center justify-center rounded hover:bg-white/10 text-white/60 hover:text-white/80"
-              aria-label="Close legend"
-            >
-              <Cross2Icon className="h-3.5 w-3.5" />
-            </button>
+          <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
+            <LayersIcon className="h-4 w-4 text-white/80" />
+            <span className="text-xs font-medium text-white/80">Layers</span>
           </div>
           <div className="px-3 py-2 space-y-2">
             {legendItems.map((item) => {

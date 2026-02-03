@@ -31,7 +31,13 @@ export default function TopBar() {
   const isRiskActive = location.pathname.startsWith('/risk')
   const isMarketActive = location.pathname.startsWith('/market')
   const isRadarActive = location.pathname.startsWith('/radar')
-  const activeTab = isRiskActive ? 'risk' : isMarketActive ? 'market' : isRadarActive ? 'radar' : 'risk'
+  const activeTab = isRiskActive
+    ? 'risk'
+    : isMarketActive
+      ? 'market'
+      : isRadarActive
+        ? 'radar'
+        : 'risk'
 
   // Show loading if:
   // 1. Actively loading, OR
